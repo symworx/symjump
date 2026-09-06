@@ -12,6 +12,34 @@ in `ntberry/sysmgmt` (`bash/bashrc.d/environment.sh`), plus commented toolbox de
 
 That does not scale across machines or emulators, and it is the wrong layer for a growing list of labs/repos.
 
+## Value / scope lock
+
+Emacs already switches projects (`project.el`, consult-dir, `C-x p`). Do **not**
+compete with that. Bindings stay off when `$INSIDE_EMACS` is set.
+
+The gap is the *other* session: a real terminal (often **tmux**), where Grok
+Build / Codex / Claude start. Those tools load `AGENTS.md` / `CLAUDE.md` from
+**startup cwd**. Jumping tmux windows does not change that cwd; launching the
+agent from `$HOME` does the wrong tree.
+
+What this project is for:
+
+1. A portable `favorites.toml` (shareable; not a private bashrc).
+2. `cd` (or print path) in Foot / Kitty / tmux — `M-p` when not in Emacs.
+3. Verbs on a place: `toolbox enter`, and `exec` an agent in that directory
+   (`grok` / Grok Build, `codex -C {path}`, `claude`).
+
+What this project is not:
+
+- A second Projectile.
+- A replacement for zoxide frecency or fzf.
+- An in-agent `/cd` (Claude/Codex already have that).
+- A kids-of-non-git file manager in v1.
+- A native ratatui app until fzf is clearly insufficient.
+
+tmux: prefer `cd` in the **current pane**. Optional later: `tmux new-window -c
+{path}` or named sessions per favorite. Do not invent a session manager.
+
 ## Placement
 
 | Home | Why |
@@ -27,99 +55,68 @@ That does not scale across machines or emulators, and it is the wrong layer for 
 Terminals do not share a plugin ABI.
 
 ```
-favorites.toml + frecency + verbs (toolbox, ssh, exec)
+favorites.toml + verbs (toolbox, agent exec)
         ↓
-sjmp (CLI + TUI picker)
+sjmp (CLI + fzf picker)
         ↓
-  backends: kitty | foot | gnome/ptyxis | wezterm | toolbox | generic (cd)
+  backends: generic cd | tmux pane/window | toolbox | exec {cmd} | kitty/foot/…
         ↓
-shell hook (bash/zsh/fish)  +  optional Kitty kitten later
+shell hook (bash) — skip when INSIDE_EMACS
 ```
 
-Detect context via `$KITTY_WINDOW_ID`, `$WEZTERM_PANE`, `$TERM`, `XDG_CURRENT_DESKTOP`, `$INSIDE_EMACS`.
-foot and GNOME only need `--working-directory` (or `footclient`).
+Detect context via `$TMUX`, `$KITTY_WINDOW_ID`, `$WEZTERM_PANE`, `$TERM`, `$INSIDE_EMACS`.
 
 ## Bindings: Meta, not Control
 
-Ctrl is already loaded (Emacs, readline, tmux, shells). Do not take `C-g`
-(keyboard-quit), `C-c`, `C-x`, or `C-z`.
+Do not take `C-g`, `C-c`, `C-x`, `C-z`. tmux already owns a prefix.
 
-Use **Meta** (`M-`, Alt / ESC-prefix), same family as Emacs `M-x` / `M-.`.
-In bash that is `\ep` for `M-p`. Terminal caveat: document `alt-sends-escape`
-(Kitty / foot) so Meta is one chord.
+Use **Meta** (`M-p`). Document `alt-sends-escape`. No `M-x` under Emacs.
 
-### v1 chords (nouns — places)
+### v1 chords
 
-| Key | Emacs-ish | Action |
-|---|---|---|
-| `M-p` | places | Open favorites picker |
-| `M-P` | places / kids | Open picker on subdirs of `$PWD` |
-| *(inside picker)* `Tab` | | Toggle favorites ↔ kids |
-| `j` `k` / arrows | | Move |
-| `1`–`9` | | Pick when query is empty |
-| type or `/` | | Filter |
-| `RET` | | `cd` |
-| `M-RET` | | New emulator window/tab there |
-| `p` | pin | Pin `$PWD` (only in picker) |
-| `ESC` | | Close |
+| Key | Action |
+|---|---|
+| `M-p` | favorites (no-op if `INSIDE_EMACS`) |
+| `M-P` | kids of `$PWD` (defer if it bloats v1) |
+| `RET` | `cd` in this pane |
+| `M-RET` | new tmux window (or emulator tab) at path |
+| `e` in picker | exec configured agent in that cwd |
+| `t` in picker | toolbox enter |
 
-### Verbs: `M-x` in a real terminal, not in Emacs
-
-`M-x` is the right *shape* for “pick a verb, then a target” — toolbox enter,
-ssh, exec. It must **not** be bound when `$INSIDE_EMACS` is set. In Emacs,
-`M-x` is `execute-extended-command`; steal it and vterm/Emacs is broken.
-
-| Context | Chord | Opens |
-|---|---|---|
-| Kitty / foot / GNOME / WezTerm (no Emacs) | `M-x` | verb palette |
-| Emacs `vterm` / `INSIDE_EMACS` | do not bind `M-x` | use `M-p t` or `M-p x` |
-| Any | `M-p` | places (always safe) |
-
-Verb palette (after `M-x`, type or number):
+### Verbs
 
 | Key | Verb | Effect |
-|---|---|---|
-| `t` | toolbox | list configured toolboxes → `toolbox enter <name>` |
-| `p` | places | same as `M-p` |
-| `d` | dirs | kids of `$PWD` |
-| `s` | ssh | host list (later) |
-| `e` | exec | command in selected cwd (later) |
-
-Selecting `t` then a row runs the enter command in the **current** shell
-(so you land inside the toolbox), not a nested extra window, unless the
-entry says `spawn = "window"`.
-
-Commented sysmgmt aliases become config, not bash:
+|---|---|
+| `t` | toolbox | `toolbox enter <name>` in current pane |
+| `g` | grok / build | `cd {path} && grok` (or configured cmd) |
+| `e` | exec | generic `{cmd}` with `{path}` |
+| `s` | ssh | later |
 
 ```toml
-[[verbs.toolbox]]
-label = "python"
-name = "dev-python"
-keys = "p"
-# printf banner optional
+[[verbs.agent]]
+label = "grok-build"
+keys = "g"
+cmd = "grok"          # or full Grok Build invocation
+# runs after cd to selected favorite
 
-[[verbs.toolbox]]
-label = "rust"
-name = "dev-rust"
-keys = "r"
+[[verbs.agent]]
+label = "codex"
+keys = "c"
+cmd = "codex -C {path}"
 ```
 
-`sjmp toolbox` / `sjmp verb toolbox` is the CLI; `M-x t` is the UI.
-Keep `alias tb='toolbox'` in sysmgmt for raw CLI. The picker replaces
-`tb-python`, `tb-aws`, not `tb` itself.
+Keep `alias tb='toolbox'` in sysmgmt. Picker replaces destination aliases only.
 
 ```toml
 [keys]
 leader = "M-p"
-kids   = "M-P"
 verbs  = "M-x"          # bound only if INSIDE_EMACS is unset
 ```
 
 ## Git vs kids
 
-- Path contains `.git` → treat as a project; do not explode into `src/` / `target/` / `.venv`.
-- No `.git` → list immediate subdirs (skip hidden, `node_modules`, `target` unless asked).
-- Optional: Enter on a non-repo drills in; `h` goes up.
+- Path contains `.git` → project; do not explode `src/` / `target/`.
+- Kids listing is optional v1; do not block the CLI + fzf + agent exec path on it.
 
 ## Config sketch
 
@@ -130,17 +127,10 @@ root = "~/worx"
 
 [keys]
 leader = "M-p"
-kids   = "M-P"
-verbs  = "M-x"
 
 [frequent]
 source = "zoxide"
 max = 20
-
-[[favorites]]
-label = "worx"
-path = "~/worx"
-keys = "w"
 
 [[favorites]]
 label = "symworx"
@@ -151,30 +141,32 @@ keys = "s"
 label = "python"
 name = "dev-python"
 keys = "p"
+
+[[verbs.agent]]
+label = "grok-build"
+keys = "g"
+cmd = "grok"
 ```
 
-Actions: `spawn { cwd, cmd? }`, `open_favorites`, `pin_cwd`, `toolbox enter`.
-
-Do not invent frecency if zoxide is present; call `zoxide query --list --score`.
+Do not invent frecency if zoxide is present.
 
 ## sysmgmt split
 
-**Move into symjump:** `cdw`, named project dirs, toolbox *destinations*.
+**Move into symjump:** `cdw`, named project dirs, toolbox destinations, agent launch cwd.
 
-**Keep in sysmgmt:** git aliases (`gs`, `gacp`, …), docker/toolbox *commands* (`d`, `tb`), `paths.sh`, venv helpers, readline history binds.
+**Keep in sysmgmt:** git aliases, `tb` / `d`, PATH, venv, readline.
 
 ```bash
 cdw() { sjmp jump "$@"; }
-# no args → picker
 ```
 
-## First code path (when implementation starts)
+## First code path
 
-1. `sjmp list` / `sjmp jump <id>` / `sjmp pin` — no TUI
-2. fzf hook on `M-p`
-3. `sjmp kids` (`M-P` or Tab)
-4. `sjmp toolbox` + verb palette on `M-x` when not in Emacs
-5. Spawn backends (`M-RET`)
-6. ratatui only if fzf is insufficient
+1. `sjmp list` / `jump` / `pin`
+2. fzf + `M-p` (skip Emacs)
+3. `sjmp exec -- cmd` / `[[verbs.agent]]` (Grok Build first)
+4. `sjmp toolbox`
+5. tmux `-c` window only if pane `cd` is not enough
+6. ratatui last
 
-Do not start by writing a VTE/GPU emulator.
+Do not start a VTE/GPU emulator.
