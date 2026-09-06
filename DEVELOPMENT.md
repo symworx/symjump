@@ -16,8 +16,6 @@ Not `symworx.jump` — that is npm/PyPI namespacing. Cargo cannot use a dotted p
 
 ```bash
 cargo install --path crates/sjmp
-# later: cargo install sjmp   # if we publish the bin crate
-# or:    cargo install symjump --bin sjmp
 eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 ```
 
@@ -31,9 +29,14 @@ eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 
 ## Prerequisites
 
-- Rust 1.75+ (edition 2021; MSRV of this spike)
+- **Rust 1.86+**, edition **2024** (`rust-toolchain.toml` pins 1.86)
 - `fzf` for the picker in the bash hook
 - Optional: `zoxide`, `toolbox`, `grok`
+
+```bash
+rustup toolchain install 1.86
+rustup override set 1.86   # or rely on rust-toolchain.toml
+```
 
 ## Branches
 
