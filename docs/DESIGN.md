@@ -15,146 +15,111 @@ That does not scale across machines or emulators, and it is the wrong layer for 
 ## Value / scope lock
 
 Emacs already switches projects (`project.el`, consult-dir, `C-x p`). Do **not**
-compete with that. Bindings stay off when `$INSIDE_EMACS` is set.
+compete with that. **All** sjmp chords stay off when `$INSIDE_EMACS` is set,
+including `M-x`.
 
 The gap is the *other* session: a real terminal (often **tmux**), where Grok
 Build / Codex / Claude start. Those tools load `AGENTS.md` / `CLAUDE.md` from
-**startup cwd**. Jumping tmux windows does not change that cwd; launching the
-agent from `$HOME` does the wrong tree.
+**startup cwd**.
 
 What this project is for:
 
-1. A portable `favorites.toml` (shareable; not a private bashrc).
-2. `cd` (or print path) in Foot / Kitty / tmux — `M-p` when not in Emacs.
-3. Verbs on a place: `toolbox enter`, and `exec` an agent in that directory
-   (`grok` / Grok Build, `codex -C {path}`, `claude`).
+1. A portable `favorites.toml`.
+2. `cd` in Foot / Kitty / tmux — `M-p` when not in Emacs.
+3. **`M-x` verb palette** in that same terminal: toolbox, grok-build, exec.
 
-What this project is not:
+What this project is not: a second Projectile, a zoxide replacement, an
+in-agent `/cd`, a kids file manager in v1, a ratatui app until fzf fails.
 
-- A second Projectile.
-- A replacement for zoxide frecency or fzf.
-- An in-agent `/cd` (Claude/Codex already have that).
-- A kids-of-non-git file manager in v1.
-- A native ratatui app until fzf is clearly insufficient.
-
-tmux: prefer `cd` in the **current pane**. Optional later: `tmux new-window -c
-{path}` or named sessions per favorite. Do not invent a session manager.
+tmux: `cd` in the current pane first. Optional: `tmux new-window -c {path}`.
 
 ## Placement
 
 | Home | Why |
 |---|---|
-| `github.com/symworx/symjump` | Same personal OSS brand as symworx; separate release train |
-| Not `symworx/symworx` workspace | Jumper is not biosignal/dynamics |
-| Not Bitterbeta / PalEm | Not a consulting deliverable |
-| Not cSYMd | Not lab/grant/course infra |
-| sysmgmt stays the installer | `eval "$(sjmp init bash)"` next to `aliases.sh` |
+| `github.com/symworx/symjump` | Sibling of the science stack |
+| Not `symworx/symworx` workspace | Not biosignal/dynamics |
+| Not Bitterbeta / PalEm / cSYMd | Personal OSS tool |
+| sysmgmt | `eval "$(sjmp init bash)"` |
 
 ## Architecture
-
-Terminals do not share a plugin ABI.
 
 ```
 favorites.toml + verbs (toolbox, agent exec)
         ↓
-sjmp (CLI + fzf picker)
+sjmp (CLI + fzf)
         ↓
-  backends: generic cd | tmux pane/window | toolbox | exec {cmd} | kitty/foot/…
+  cd | tmux | toolbox | exec {cmd} | kitty/foot/…
         ↓
-shell hook (bash) — skip when INSIDE_EMACS
+shell hook — skip entire hook when INSIDE_EMACS
 ```
-
-Detect context via `$TMUX`, `$KITTY_WINDOW_ID`, `$WEZTERM_PANE`, `$TERM`, `$INSIDE_EMACS`.
 
 ## Bindings: Meta, not Control
 
-Do not take `C-g`, `C-c`, `C-x`, `C-z`. tmux already owns a prefix.
+Do not take `C-g`, `C-c`, `C-x`, `C-z`. tmux owns its prefix.
+Document `alt-sends-escape`.
 
-Use **Meta** (`M-p`). Document `alt-sends-escape`. No `M-x` under Emacs.
+| Chord | Where | Action |
+|---|---|---|
+| `M-p` | terminal / tmux only | places |
+| `M-P` | same | kids of `$PWD` (can defer) |
+| **`M-x`** | same, **never in Emacs** | verb palette |
+| `M-p t` / `M-p g` | only if you insist in vterm | toolbox / grok; default is *no hook* in Emacs |
+| `M-RET` | inside a picker | new tmux window / tab at path |
 
-### v1 chords
+### After `M-x` (verb palette)
 
-| Key | Action |
-|---|---|
-| `M-p` | favorites (no-op if `INSIDE_EMACS`) |
-| `M-P` | kids of `$PWD` (defer if it bloats v1) |
-| `RET` | `cd` in this pane |
-| `M-RET` | new tmux window (or emulator tab) at path |
-| `e` in picker | exec configured agent in that cwd |
-| `t` in picker | toolbox enter |
-
-### Verbs
+Type or hit the letter. Then pick a place if the verb needs one.
 
 | Key | Verb | Effect |
-|---|---|
-| `t` | toolbox | `toolbox enter <name>` in current pane |
-| `g` | grok / build | `cd {path} && grok` (or configured cmd) |
-| `e` | exec | generic `{cmd}` with `{path}` |
+|---|---|---|
+| `t` | toolbox | list `[[verbs.toolbox]]` → `toolbox enter <name>` |
+| `g` | grok / build | pick favorite → `cd {path} && grok` |
+| `e` | exec | configured `{cmd}` with `{path}` |
+| `p` | places | same as `M-p` |
 | `s` | ssh | later |
+
+`M-x` then `g` is the daily Grok Build path: verb first, place second.
+`M-p` then `e`/`t` remains valid *inside* the places picker.
+
+```toml
+[keys]
+leader = "M-p"
+kids   = "M-P"
+verbs  = "M-x"    # bind only if INSIDE_EMACS is unset
+```
 
 ```toml
 [[verbs.agent]]
 label = "grok-build"
 keys = "g"
-cmd = "grok"          # or full Grok Build invocation
-# runs after cd to selected favorite
+cmd = "grok"
 
 [[verbs.agent]]
 label = "codex"
 keys = "c"
 cmd = "codex -C {path}"
-```
-
-Keep `alias tb='toolbox'` in sysmgmt. Picker replaces destination aliases only.
-
-```toml
-[keys]
-leader = "M-p"
-verbs  = "M-x"          # bound only if INSIDE_EMACS is unset
-```
-
-## Git vs kids
-
-- Path contains `.git` → project; do not explode `src/` / `target/`.
-- Kids listing is optional v1; do not block the CLI + fzf + agent exec path on it.
-
-## Config sketch
-
-`~/.config/symjump/favorites.toml`
-
-```toml
-root = "~/worx"
-
-[keys]
-leader = "M-p"
-
-[frequent]
-source = "zoxide"
-max = 20
-
-[[favorites]]
-label = "symworx"
-path = "~/worx/symworx"
-keys = "s"
 
 [[verbs.toolbox]]
 label = "python"
 name = "dev-python"
 keys = "p"
-
-[[verbs.agent]]
-label = "grok-build"
-keys = "g"
-cmd = "grok"
 ```
 
-Do not invent frecency if zoxide is present.
+Keep `alias tb='toolbox'` in sysmgmt.
+
+## Git vs kids
+
+`.git` → project root. Kids listing is optional v1.
+
+## Config sketch
+
+`~/.config/symjump/favorites.toml` — `root`, `[keys]`, `[[favorites]]`,
+`[[verbs.toolbox]]`, `[[verbs.agent]]` as above. Use zoxide if present.
 
 ## sysmgmt split
 
-**Move into symjump:** `cdw`, named project dirs, toolbox destinations, agent launch cwd.
-
-**Keep in sysmgmt:** git aliases, `tb` / `d`, PATH, venv, readline.
+Move: `cdw`, destination aliases. Keep: `gs`, `tb`, `d`, PATH, readline.
 
 ```bash
 cdw() { sjmp jump "$@"; }
@@ -164,9 +129,9 @@ cdw() { sjmp jump "$@"; }
 
 1. `sjmp list` / `jump` / `pin`
 2. fzf + `M-p` (skip Emacs)
-3. `sjmp exec -- cmd` / `[[verbs.agent]]` (Grok Build first)
+3. **`M-x` verb palette** + `sjmp verb` / `sjmp exec` (Grok Build first)
 4. `sjmp toolbox`
-5. tmux `-c` window only if pane `cd` is not enough
+5. tmux `-c` if pane `cd` is not enough
 6. ratatui last
 
 Do not start a VTE/GPU emulator.
