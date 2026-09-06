@@ -10,11 +10,11 @@ A launcher for *places* (and later *verbs* like toolbox enter), not a terminal e
 
 ## Why this project
 
-Screen-sharing a session, jumping between projects with personal bash aliases. Sharing the `bashrc` “worked” — after friends rewrote paths and names for their machines. Not a huge tax, but enough to want a **portable list** instead of a private shell dialect.
+I was screen-sharing with friends and colleagues, jumping between directories with aliases and shortcuts. I sent them my bashrc. It worked — after they rewrote paths and names for their machines. Not a huge tax, but enough to be annoying. I started thinking about a list that was not a private shell dialect.
 
-Using [Omarchy](https://omarchy.org) later sharpened that: zoxide + fzf + a terminal-agnostic hook travel; a pile of `cdw` / `tb-python` aliases do not. symjump is that list — pinned places and a few verbs (toolbox) that install the same way on Kitty, foot, or Emacs vterm.
+After trying [Omarchy](https://omarchy.org), I had a clearer picture: zoxide + fzf + a terminal-agnostic hook travel; a pile of `cdw` / `tb-python` aliases do not. I wanted something more portable — pinned places and a few verbs (toolbox) that install the same way on Kitty, foot, or Emacs vterm.
 
-It is not a bid to replace Omarchy’s `cd`/`z` stack. It sits *on top*: favorites you chose, plus destinations your bashrc should not have to encode.
+This is not a bid to replace Omarchy’s `cd`/`z` stack. It sits *on top*: favorites you chose, plus destinations your bashrc should not have to encode.
 
 ## What it is
 
