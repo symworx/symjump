@@ -4,59 +4,54 @@ How to work in **symjump**. For agent rules see [AGENTS.md](AGENTS.md). For prod
 
 This repo is a sibling of [symworx/symworx](https://github.com/symworx/symworx), not a workspace member. Do not add it to that `Cargo.toml`.
 
+## Install name
+
+| Surface | Name |
+|---|---|
+| crates.io / `cargo install` | **`symjump`** (the workspace; binary is `sjmp`) |
+| Binary on PATH | `sjmp` |
+| Config | `~/.config/symjump/favorites.toml` |
+
+Not `symworx.jump` — that is npm/PyPI namespacing. Cargo cannot use a dotted package name like that, and it would look like a workspace member of the science stack.
+
+```bash
+cargo install --path crates/sjmp
+# later: cargo install sjmp   # if we publish the bin crate
+# or:    cargo install symjump --bin sjmp
+eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
+```
+
+## Crates
+
+| Crate | Role |
+|---|---|
+| `symjump-config` | TOML types + expand `~` |
+| `symjump-core` | resolve / pin / kids / exec strings |
+| `sjmp` | CLI + bash hook |
+
 ## Prerequisites
 
-- Rust stable (MSRV TBD; expect 1.85+ / edition 2024 to match SymWorx when the crate lands)
-- `fzf` for the first picker
-- Optional: `zoxide` for the frequent-dirs source
-- `toolbox` only if you use Fedora toolbox verbs
+- Rust 1.75+ (edition 2021; MSRV of this spike)
+- `fzf` for the picker in the bash hook
+- Optional: `zoxide`, `toolbox`, `grok`
 
 ## Branches
 
-| Branch | Role |
-|---|---|
-| `main` | stable |
-| `develop` | integration; **PR target** |
-| `stage` | pre-release FF from develop |
-| `feature/*` | work |
-
-Current design work: `feature/initial-build`.
+Work on `feature/cli-build`. PR to `develop`.
 
 ```bash
 git clone git@github.com:symworx/symjump.git
 cd symjump
-git checkout feature/initial-build   # until merged to develop
+git checkout feature/cli-build
+cargo test --workspace
+cargo run -p sjmp -- list
 ```
-
-## Commands (once the crate exists)
-
-```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-cargo test
-cargo run --bin sjmp -- list
-```
-
-Until then, documentation PRs are the expected contribution.
 
 ## Release path
 
-Same shape as SymWorx, lighter until publish is real:
-
-1. Land features on `develop`.
-2. Fast-forward `develop` → `stage` when you want a promotion point.
-3. `release/vX.Y.Z` from `stage`, changelog, PR to `main`.
-4. Merge, **manually** tag `vX.Y.Z`.
-
-No crates.io job until LICENSE + a real crate exist.
-
-## Code style
-
-- `cargo fmt` before commit.
-- Focused PRs.
-- Binding or backend changes must update DESIGN.md and README.
+`develop` → `stage` → `release/vX.Y.Z` → `main` → manual tag.
 
 ## Related trees
 
-- SymWorx contributing / agents (science stack): https://github.com/symworx/symworx
-- Personal shell kit: `ntberry/sysmgmt` (`bash/bashrc.d/`)
+- SymWorx: https://github.com/symworx/symworx
+- `ntberry/sysmgmt`

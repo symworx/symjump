@@ -1,0 +1,31 @@
+root = "~/worx"
+
+[keys]
+leader = "M-p"
+kids = "M-P"
+verbs = "M-x"
+
+[[favorites]]
+label = "worx"
+path = "~/worx"
+keys = "w"
+
+[[favorites]]
+label = "symworx"
+path = "~/worx/symworx"
+keys = "s"
+
+[[verbs.toolbox]]
+label = "python"
+name = "dev-python"
+keys = "p"
+
+[[verbs.agent]]
+label = "grok-build"
+keys = "g"
+cmd = "grok"
+
+[[verbs.agent]]
+label = "codex"
+keys = "c"
+cmd = "codex -C {path}"
