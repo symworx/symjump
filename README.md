@@ -8,6 +8,14 @@ Cross-emulator directory favorites and jump list.
 
 A launcher for *places* (and later *verbs* like toolbox enter), not a terminal emulator and not a replacement for git/docker aliases.
 
+## Why this project
+
+Screen-sharing a session, jumping between projects with personal bash aliases. Sharing the `bashrc` “worked” — after friends rewrote paths and names for their machines. Not a huge tax, but enough to want a **portable list** instead of a private shell dialect.
+
+Using [Omarchy](https://omarchy.org) later sharpened that: zoxide + fzf + a terminal-agnostic hook travel; a pile of `cdw` / `tb-python` aliases do not. symjump is that list — pinned places and a few verbs (toolbox) that install the same way on Kitty, foot, or Emacs vterm.
+
+It is not a bid to replace Omarchy’s `cd`/`z` stack. It sits *on top*: favorites you chose, plus destinations your bashrc should not have to encode.
+
 ## What it is
 
 - Pinned favorites + optional frecency (zoxide or internal)
@@ -55,10 +63,15 @@ Avoided: SymTerm (reads as an emulator), SymKey (crypto), binary `sym` (taken).
 | `stage` | pre-release |
 | `feature/initial-build` | this design + first implementation |
 
-## Docs on this branch
+Feature PRs target **`develop`**, not `main`. Path: `develop` → `stage` → `main` (same idea as [symworx](https://github.com/symworx/symworx)).
+
+## Docs
 
 - [docs/DESIGN.md](docs/DESIGN.md) — architecture, Meta bindings, toolbox verbs, config, sysmgmt split
 - [docs/ROADMAP.md](docs/ROADMAP.md) — first implementation steps
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute
+- [DEVELOPMENT.md](DEVELOPMENT.md) — build / branch / release notes
+- [AGENTS.md](AGENTS.md) — guidelines for agentic tools
 
 ## License
 
