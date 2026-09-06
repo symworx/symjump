@@ -27,16 +27,16 @@ That does not scale across machines or emulators, and it is the wrong layer for 
 Terminals do not share a plugin ABI.
 
 ```
-favorites.toml + frecency
+favorites.toml + frecency + verbs (toolbox, ssh, exec)
         ↓
 sjmp (CLI + TUI picker)
         ↓
-  backends: kitty | foot | gnome/ptyxis | wezterm | generic (cd / print path)
+  backends: kitty | foot | gnome/ptyxis | wezterm | toolbox | generic (cd)
         ↓
 shell hook (bash/zsh/fish)  +  optional Kitty kitten later
 ```
 
-Detect context via `$KITTY_WINDOW_ID`, `$WEZTERM_PANE`, `$TERM`, `XDG_CURRENT_DESKTOP`.
+Detect context via `$KITTY_WINDOW_ID`, `$WEZTERM_PANE`, `$TERM`, `XDG_CURRENT_DESKTOP`, `$INSIDE_EMACS`.
 foot and GNOME only need `--working-directory` (or `footclient`).
 
 ## Bindings: Meta, not Control
@@ -45,13 +45,8 @@ Ctrl is already loaded (Emacs, readline, tmux, shells). Do not take `C-g`
 (keyboard-quit), `C-c`, `C-x`, or `C-z`.
 
 Use **Meta** (`M-`, Alt / ESC-prefix), same family as Emacs `M-x` / `M-.`.
-In bash that is `\ep` for `M-p`. In vterm, Meta still reaches the shell if
-`vterm-keymap-exceptions` does not steal it — keep the chord off Emacs's
-core map.
-
-Terminal caveat: some emulators send Alt as ESC+key. That is fine for a
-picker leader; document `alt-sends-escape` (Kitty / foot) so `M-p` is one
-chord, not a stray ESC.
+In bash that is `\ep` for `M-p`. Terminal caveat: document `alt-sends-escape`
+(Kitty / foot) so Meta is one chord.
 
 ### v1 chords (nouns — places)
 
@@ -64,43 +59,60 @@ chord, not a stray ESC.
 | `1`–`9` | | Pick when query is empty |
 | type or `/` | | Filter |
 | `RET` | | `cd` |
-| `M-RET` | | New emulator window/tab there (not `C-RET`) |
+| `M-RET` | | New emulator window/tab there |
 | `p` | pin | Pin `$PWD` (only in picker) |
 | `ESC` | | Close |
 
-`M-p` is the one global bind. Everything else is modal inside the picker
-so it cannot clash with Emacs or git aliases.
+### Verbs: `M-x` in a real terminal, not in Emacs
 
-### Later: verbs (optional prefix)
+`M-x` is the right *shape* for “pick a verb, then a target” — toolbox enter,
+ssh, exec. It must **not** be bound when `$INSIDE_EMACS` is set. In Emacs,
+`M-x` is `execute-extended-command`; steal it and vterm/Emacs is broken.
 
-Yes — treat verbs as a **second layer**, not more global Ctrl chords.
-
-Pattern: `M-p` then a letter, or a rare `M-s` prefix (`s` = sjmp) only if
-one chord is not enough.
-
-| After `M-p` (or `M-s`) | Verb | Meaning |
+| Context | Chord | Opens |
 |---|---|---|
-| `p` / `RET` | places | favorites list (default) |
-| `d` | dirs / kids | subdirs of `$PWD` |
-| `i` | pin | pin current dir |
-| `w` | window | spawn new terminal at selection |
-| `t` | toolbox | toolbox destinations (sysmgmt leftovers) |
-| `s` | ssh | host list (not v1) |
-| `x` | exec | run configured command in that cwd |
+| Kitty / foot / GNOME / WezTerm (no Emacs) | `M-x` | verb palette |
+| Emacs `vterm` / `INSIDE_EMACS` | do not bind `M-x` | use `M-p t` or `M-p x` |
+| Any | `M-p` | places (always safe) |
 
-That is Emacs `C-x` / `M-x` thinking: one prefix, discoverable verbs,
-nothing stolen from Control.
+Verb palette (after `M-x`, type or number):
 
-Do **not** bind verbs as global `M-c`, `M-x`, `M-w` — those are Emacs.
-If a verb needs a global chord, use `M-p` + letter only.
+| Key | Verb | Effect |
+|---|---|---|
+| `t` | toolbox | list configured toolboxes → `toolbox enter <name>` |
+| `p` | places | same as `M-p` |
+| `d` | dirs | kids of `$PWD` |
+| `s` | ssh | host list (later) |
+| `e` | exec | command in selected cwd (later) |
 
-Config should list chords so sysmgmt does not hard-code them:
+Selecting `t` then a row runs the enter command in the **current** shell
+(so you land inside the toolbox), not a nested extra window, unless the
+entry says `spawn = "window"`.
+
+Commented sysmgmt aliases become config, not bash:
+
+```toml
+[[verbs.toolbox]]
+label = "python"
+name = "dev-python"
+keys = "p"
+# printf banner optional
+
+[[verbs.toolbox]]
+label = "rust"
+name = "dev-rust"
+keys = "r"
+```
+
+`sjmp toolbox` / `sjmp verb toolbox` is the CLI; `M-x t` is the UI.
+Keep `alias tb='toolbox'` in sysmgmt for raw CLI. The picker replaces
+`tb-python`, `tb-aws`, not `tb` itself.
 
 ```toml
 [keys]
-leader = "M-p"          # open picker
-kids   = "M-P"          # optional second chord
-# prefix verbs live inside the picker; not global
+leader = "M-p"
+kids   = "M-P"
+verbs  = "M-x"          # bound only if INSIDE_EMACS is unset
 ```
 
 ## Git vs kids
@@ -119,9 +131,10 @@ root = "~/worx"
 [keys]
 leader = "M-p"
 kids   = "M-P"
+verbs  = "M-x"
 
 [frequent]
-source = "zoxide"   # or "internal"
+source = "zoxide"
 max = 20
 
 [[favorites]]
@@ -133,35 +146,35 @@ keys = "w"
 label = "symworx"
 path = "~/worx/symworx"
 keys = "s"
+
+[[verbs.toolbox]]
+label = "python"
+name = "dev-python"
+keys = "p"
 ```
 
-Actions: `spawn { cwd, cmd? }`, `open_favorites`, `pin_cwd` (need OSC 7 or `$PWD` from the hook).
+Actions: `spawn { cwd, cmd? }`, `open_favorites`, `pin_cwd`, `toolbox enter`.
 
 Do not invent frecency if zoxide is present; call `zoxide query --list --score`.
 
 ## sysmgmt split
 
-**Move into symjump:** `cdw`, named project dirs, toolbox *destinations* as optional spawn entries.
+**Move into symjump:** `cdw`, named project dirs, toolbox *destinations*.
 
 **Keep in sysmgmt:** git aliases (`gs`, `gacp`, …), docker/toolbox *commands* (`d`, `tb`), `paths.sh`, venv helpers, readline history binds.
-
-Launcher = nouns (places). Aliases = verbs — until/unless those verbs are
-picker-prefixed as above. Do not delete `gs` in favor of `M-p g`.
 
 ```bash
 cdw() { sjmp jump "$@"; }
 # no args → picker
 ```
 
-SSH host aliases can later be a second list with an `ssh` backend; not v1.
-
 ## First code path (when implementation starts)
 
 1. `sjmp list` / `sjmp jump <id>` / `sjmp pin` — no TUI
-2. Pipe `sjmp list` to `fzf` from the bash hook bound to `M-p`
-3. `sjmp kids` for non-git subdirs (`M-P` or Tab)
-4. Spawn backends (`M-RET` in picker)
-5. Native ratatui picker only if fzf is insufficient
-6. Verb prefix only after the single-chord flow is daily-driver quality
+2. fzf hook on `M-p`
+3. `sjmp kids` (`M-P` or Tab)
+4. `sjmp toolbox` + verb palette on `M-x` when not in Emacs
+5. Spawn backends (`M-RET`)
+6. ratatui only if fzf is insufficient
 
 Do not start by writing a VTE/GPU emulator.
