@@ -4,41 +4,28 @@
 
 - [x] Repo + branch layout
 - [x] Design: sidecar, UX, config, org placement
-- [x] Meta bindings (`M-p` / `M-P`); no Control
-- [x] `M-x` verb palette + toolbox enter; skip when `INSIDE_EMACS`
+- [x] Meta bindings; no Control; skip Emacs
+- [x] Toolbox verbs
+- [x] Scope lock: tmux + Grok Build cwd; not a second Projectile
 
-## 1. Spike (still `feature/initial-build`)
+## 1. Spike
 
-- [ ] Rust bin `sjmp`: read/write `favorites.toml`
-- [ ] `list`, `jump`, `pin`, `kids`
-- [ ] Git-root detection
-- [ ] bash hook + `cdw` wrapper snippet for sysmgmt
-- [ ] Bind `M-p` / `M-P`; bind `M-x` only if `INSIDE_EMACS` is unset
+- [ ] Rust bin `sjmp`: `favorites.toml`
+- [ ] `list`, `jump`, `pin`
+- [ ] bash hook + `cdw`; `M-p` only if `INSIDE_EMACS` unset
+- [ ] fzf picker
 
-## 2. Picker
+## 2. Verbs that justify the tool
 
-- [ ] fzf integration (`sjmp pick`)
-- [ ] Numbered picks when query empty
-- [ ] Tab toggle favorites / kids
+- [ ] `[[verbs.agent]]` — `cd {path} && grok` (Grok Build)
+- [ ] `sjmp exec --cmd … --path …`
+- [ ] `[[verbs.toolbox]]` / `sjmp toolbox`
+- [ ] Optional: `tmux new-window -c {path}` on `M-RET`
 
-## 3. Verbs
+## 3. Later
 
-- [ ] `sjmp toolbox` / `[[verbs.toolbox]]`
-- [ ] `M-x t` → enter selected toolbox in current shell
-- [ ] `M-p t` fallback for vterm
-- [ ] Optional `spawn = "window"` per entry
-
-## 4. Emulator backends
-
-- [ ] generic `cd` (vterm / any shell)
-- [ ] kitty `@ launch --cwd`
-- [ ] foot / footclient `--working-directory`
-- [ ] gnome-terminal / ptyxis
-- [ ] wezterm `start --cwd`
-
-## 5. Polish
-
-- [ ] `sjmp init bash|zsh|fish`
+- [ ] kids listing
+- [ ] kitty / foot / gnome spawn (pane `cd` first)
 - [ ] zoxide frequent source
-- [ ] LICENSE (Apache-2.0 likely)
-- [ ] Merge to `develop` when the spike is usable daily
+- [ ] ratatui only if fzf fails
+- [ ] LICENSE; merge to `develop`
