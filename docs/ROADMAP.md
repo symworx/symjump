@@ -4,6 +4,8 @@
 
 - [x] Repo + branch layout
 - [x] Design: sidecar, UX, config, org placement
+- [x] Meta bindings (`M-p` / `M-P`); no Control
+- [x] `M-x` verb palette + toolbox enter; skip when `INSIDE_EMACS`
 
 ## 1. Spike (still `feature/initial-build`)
 
@@ -11,6 +13,7 @@
 - [ ] `list`, `jump`, `pin`, `kids`
 - [ ] Git-root detection
 - [ ] bash hook + `cdw` wrapper snippet for sysmgmt
+- [ ] Bind `M-p` / `M-P`; bind `M-x` only if `INSIDE_EMACS` is unset
 
 ## 2. Picker
 
@@ -18,7 +21,14 @@
 - [ ] Numbered picks when query empty
 - [ ] Tab toggle favorites / kids
 
-## 3. Emulator backends
+## 3. Verbs
+
+- [ ] `sjmp toolbox` / `[[verbs.toolbox]]`
+- [ ] `M-x t` → enter selected toolbox in current shell
+- [ ] `M-p t` fallback for vterm
+- [ ] Optional `spawn = "window"` per entry
+
+## 4. Emulator backends
 
 - [ ] generic `cd` (vterm / any shell)
 - [ ] kitty `@ launch --cwd`
@@ -26,7 +36,7 @@
 - [ ] gnome-terminal / ptyxis
 - [ ] wezterm `start --cwd`
 
-## 4. Polish
+## 5. Polish
 
 - [ ] `sjmp init bash|zsh|fish`
 - [ ] zoxide frequent source

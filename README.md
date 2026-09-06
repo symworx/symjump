@@ -6,21 +6,35 @@ Cross-emulator directory favorites and jump list.
 **Org:** [symworx](https://github.com/symworx) sibling repo — not part of the science workspace.  
 **Status:** private, design-first (`feature/initial-build`).
 
-A launcher for *places*, not a terminal emulator and not a replacement for git/docker aliases.
+A launcher for *places* (and later *verbs* like toolbox enter), not a terminal emulator and not a replacement for git/docker aliases.
 
 ## What it is
 
 - Pinned favorites + optional frecency (zoxide or internal)
-- One shortcut opens a list; Tab / j-k / `1`–`9` / type-to-filter; Enter jumps
+- `M-p` opens the places list; Tab / j-k / `1`–`9` / type-to-filter; Enter jumps
 - Subdir listing when the target is **not** a git project
+- `M-x` verb palette in a bare terminal (toolbox, later ssh/exec); **not bound inside Emacs**
 - Works with Kitty, foot, GNOME Terminal/Ptyxis, WezTerm, and Emacs vterm via a **sidecar + shell hook**, not an in-emulator plugin
+
+## Bindings (Meta, not Control)
+
+| Chord | Where | Action |
+|---|---|---|
+| `M-p` | everywhere | favorites / places |
+| `M-P` | everywhere | kids of `$PWD` |
+| `M-x` | Kitty / foot / GNOME / WezTerm only | verb palette (`t` = toolbox) |
+| `M-p t` | Emacs vterm | toolbox list (`M-x` stays Emacs) |
+| `M-RET` | inside picker | new terminal window/tab at selection |
+
+See [docs/DESIGN.md](docs/DESIGN.md) for the full table and `[[verbs.toolbox]]` config.
 
 ## What it is not
 
 - Not a GPU terminal (see Kitty / foot / Alacritty / WezTerm)
 - Not in the `symworx` crate workspace (biosignal / load / dynamics)
 - Not a Bitterbeta or cSYMd product
-- Does not replace `gs` / `gacp` / `d` / PATH setup in `ntberry/sysmgmt`
+- Does not replace `gs` / `gacp` / `d` / `tb` / PATH setup in `ntberry/sysmgmt`
+- Replaces `cdw` and commented `tb-python`-style destination aliases only
 
 ## Names
 
@@ -43,7 +57,7 @@ Avoided: SymTerm (reads as an emulator), SymKey (crypto), binary `sym` (taken).
 
 ## Docs on this branch
 
-- [docs/DESIGN.md](docs/DESIGN.md) — architecture, UX, config shape, sysmgmt split
+- [docs/DESIGN.md](docs/DESIGN.md) — architecture, Meta bindings, toolbox verbs, config, sysmgmt split
 - [docs/ROADMAP.md](docs/ROADMAP.md) — first implementation steps
 
 ## License
