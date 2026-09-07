@@ -64,6 +64,15 @@ Document `alt-sends-escape`.
 | `M-p` | terminal / tmux only | places |
 | `M-P` | same | kids of `$PWD` |
 | **`M-x`** | same, **never in Emacs** | action palette |
+| `M-<key>` | same | jump the favorite whose `keys` is that letter (`M-w`, `M-j`, …) |
+
+`sjmp pin --keys` refuses letters that are already taken:
+
+- sjmp chords: `p` (`M-p` places), `P` (`M-P` kids), `x` (`M-x` actions)
+- readline emacs-mode: `b` / `f` (word motion), `d` (kill-word), `y` (yank-pop)
+- any `keys` already used by another favorite
+
+Also leave Control alone (`C-g`, `C-c`, `C-x`, `C-z`). Crowded but still allowed: `M-u` / `M-l` / `M-c` (case), `M-.` (last arg; not a letter so never a favorite Meta bind).
 | `M-RET` | inside a picker | new tmux window / tab at path |
 
 ### After `M-x` (action palette)
@@ -122,24 +131,24 @@ See [examples/favorites.toml](../examples/favorites.toml).
 
 ## Shell-kit split
 
-**Move here:** directory jump helpers (`cdw`) and destination-style aliases.
+**Move here:** directory jump helpers and destination-style aliases.
 
 **Stay in the user's shell kit:** git/docker/PATH/readline, and command
 aliases such as a `tb` wrapper around `toolbox`.
 
 ```bash
-cdw() { sjmp jump "$@"; }
+jmp() { sjmp jump "$@"; }
 ```
 
-The bash hook already defines `cdw` that way (empty args → fzf).
+The bash hook already defines `jmp` that way (empty args → fzf).
 
 ## Status
 
 Shipped on `feature/cli-build`:
 
-1. `sjmp list` / `jump` / `pin` / `kids`
+1. `sjmp list` / `jump` / `pin` / `unpin` / `kids`
 2. Closed TOML-subset parser (no serde)
-3. bash hook + `cdw`; skip entire hook when `INSIDE_EMACS`
+3. bash hook + `jmp`; skip entire hook when `INSIDE_EMACS`; first `sjmp` on the default path writes `~/.config/symjump/favorites.toml` if missing
 4. `M-p` places, `M-P` kids, `M-x` from `sjmp action list`
 5. Numbered picks `1`–`9` only while the fzf query is empty
 6. `sjmp action` / `exec` / `toolbox`

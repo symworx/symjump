@@ -16,6 +16,7 @@ Not `symworx.jump` — that is npm/PyPI namespacing. Cargo cannot use a dotted p
 
 ```bash
 cargo install --path crates/sjmp
+sjmp                       # first run writes ~/.config/symjump/favorites.toml
 eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 ```
 
@@ -24,7 +25,7 @@ eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 | Crate | Role |
 |---|---|
 | `symjump-config` | TOML types + expand `~` |
-| `symjump-core` | resolve / pin / kids / exec strings |
+| `symjump-core` | resolve / pin / unpin / kids / exec strings |
 | `sjmp` | CLI + bash hook |
 
 ## Prerequisites

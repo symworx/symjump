@@ -1,8 +1,17 @@
 //! Pure operations over a [`symjump_config::Config`].
 //! The CLI prints paths; the shell hook is responsible for `cd`.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use symjump_config::{expand_user, AgentAction, Config, Favorite, ToolboxAction};
+
+/// GNU readline emacs-mode Meta letters we never steal for favorite jumps.
+const READLINE_META_RESERVED: &[(char, &str)] = &[
+    ('b', "readline M-b backward-word"),
+    ('f', "readline M-f forward-word"),
+    ('d', "readline M-d kill-word"),
+    ('y', "readline M-y yank-pop"),
+];
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum CoreError {
@@ -14,6 +23,10 @@ pub enum CoreError {
     UnknownToolbox(String),
     #[error("path is empty")]
     EmptyPath,
+    #[error("key `{0}` is reserved ({1})")]
+    KeyReserved(String, String),
+    #[error("key `{0}` already used by `{1}`")]
+    KeyTaken(String, String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,20 +62,86 @@ pub fn list_favorites(cfg: &Config, home: &Path) -> Vec<Resolved> {
 }
 
 pub fn list_lines(cfg: &Config, home: &Path) -> Vec<String> {
-    list_favorites(cfg, home)
+    let rows: Vec<(String, String, String)> = list_favorites(cfg, home)
         .into_iter()
         .map(|r| {
-            format!(
-                "{}\t{}\t{}",
-                r.keys.as_deref().unwrap_or("-"),
+            (
+                r.keys.as_deref().unwrap_or("-").to_string(),
                 r.label,
-                r.path.display()
+                r.path.display().to_string(),
             )
         })
+        .collect();
+    let kw = rows.iter().map(|(k, _, _)| k.chars().count()).max().unwrap_or(0);
+    let lw = rows.iter().map(|(_, l, _)| l.chars().count()).max().unwrap_or(0);
+    rows.into_iter()
+        .map(|(k, l, p)| format!("{k:<kw$}  {l:<lw$}  {p}"))
         .collect()
 }
 
-pub fn pin(cfg: &mut Config, label: String, path: String, keys: Option<String>) {
+pub fn meta_letter(spec: &str) -> Option<char> {
+    let rest = spec.strip_prefix("M-")?;
+    let mut chars = rest.chars();
+    let c = chars.next()?;
+    if chars.next().is_some() {
+        return None;
+    }
+    Some(c)
+}
+
+pub fn reserved_meta_letters(cfg: &Config) -> BTreeSet<char> {
+    let mut out = BTreeSet::new();
+    for spec in [&cfg.keys.leader, &cfg.keys.kids, &cfg.keys.actions] {
+        if let Some(c) = meta_letter(spec) {
+            out.insert(c);
+        }
+    }
+    out.extend(READLINE_META_RESERVED.iter().map(|(c, _)| *c));
+    out
+}
+
+fn reserved_reason(cfg: &Config, c: char) -> Option<String> {
+    if meta_letter(&cfg.keys.leader) == Some(c) {
+        return Some(format!("{} places", cfg.keys.leader));
+    }
+    if meta_letter(&cfg.keys.kids) == Some(c) {
+        return Some(format!("{} kids", cfg.keys.kids));
+    }
+    if meta_letter(&cfg.keys.actions) == Some(c) {
+        return Some(format!("{} actions", cfg.keys.actions));
+    }
+    READLINE_META_RESERVED
+        .iter()
+        .find(|(ch, _)| *ch == c)
+        .map(|(_, why)| (*why).to_string())
+}
+
+/// Single-letter keys become `M-<letter>`. Reject sjmp chords, readline
+/// motion/kill letters, and keys already used by another favorite.
+pub fn check_favorite_key(cfg: &Config, key: &str, except_label: Option<&str>) -> Result<(), CoreError> {
+    let k = key.trim();
+    if k.is_empty() {
+        return Ok(());
+    }
+    let mut chars = k.chars();
+    if let (Some(c), None) = (chars.next(), chars.next()) {
+        if let Some(why) = reserved_reason(cfg, c) {
+            return Err(CoreError::KeyReserved(k.into(), why));
+        }
+    }
+    if let Some(other) = cfg.favorites.iter().find(|f| {
+        f.keys.as_deref() == Some(k)
+            && except_label.is_none_or(|lab| !f.label.eq_ignore_ascii_case(lab))
+    }) {
+        return Err(CoreError::KeyTaken(k.into(), other.label.clone()));
+    }
+    Ok(())
+}
+
+pub fn pin(cfg: &mut Config, label: String, path: String, keys: Option<String>) -> Result<(), CoreError> {
+    if let Some(k) = keys.as_deref() {
+        check_favorite_key(cfg, k, Some(&label))?;
+    }
     if let Some(existing) = cfg
         .favorites
         .iter_mut()
@@ -72,9 +151,23 @@ pub fn pin(cfg: &mut Config, label: String, path: String, keys: Option<String>) 
         if keys.is_some() {
             existing.keys = keys;
         }
-        return;
+        return Ok(());
     }
     cfg.favorites.push(Favorite { label, path, keys });
+    Ok(())
+}
+
+pub fn unpin(cfg: &mut Config, query: &str) -> Result<Favorite, CoreError> {
+    let q = query.trim();
+    if q.is_empty() {
+        return Err(CoreError::UnknownFavorite(query.into()));
+    }
+    let idx = cfg
+        .favorites
+        .iter()
+        .position(|f| f.label.eq_ignore_ascii_case(q) || f.keys.as_deref() == Some(q))
+        .ok_or_else(|| CoreError::UnknownFavorite(q.into()))?;
+    Ok(cfg.favorites.remove(idx))
 }
 
 pub fn is_git_root(dir: &Path) -> bool {
@@ -191,19 +284,47 @@ mod tests {
     }
 
     #[test]
-    fn list_is_stable_tsv() {
+    fn list_columns_align() {
         let lines = list_lines(&cfg(), Path::new("/h"));
-        assert_eq!(lines[0], "r\tsrc\t/h/src");
-        assert_eq!(lines[1], "s\tsymworx\t/h/src/symworx");
+        assert_eq!(lines[0], "r  src      /h/src");
+        assert_eq!(lines[1], "s  symworx  /h/src/symworx");
+        let col = lines[0].find("/h/").unwrap();
+        assert_eq!(lines[1].find("/h/").unwrap(), col);
     }
 
     #[test]
     fn pin_updates_or_appends() {
         let mut c = cfg();
-        pin(&mut c, "symworx".into(), "~/new".into(), None);
+        pin(&mut c, "symworx".into(), "~/new".into(), None).unwrap();
         assert_eq!(c.favorites[1].path, "~/new");
-        pin(&mut c, "lab".into(), "~/lab".into(), Some("l".into()));
+        pin(&mut c, "lab".into(), "~/lab".into(), Some("l".into())).unwrap();
         assert_eq!(c.favorites.len(), 3);
+        let gone = unpin(&mut c, "s").unwrap();
+        assert_eq!(gone.label, "symworx");
+        assert_eq!(c.favorites.len(), 2);
+        assert!(matches!(unpin(&mut c, "nope"), Err(CoreError::UnknownFavorite(_))));
+    }
+
+    #[test]
+    fn pin_rejects_reserved_and_taken_keys() {
+        let mut c = cfg();
+        assert!(matches!(
+            pin(&mut c, "nope".into(), "~/x".into(), Some("x".into())),
+            Err(CoreError::KeyReserved(k, _)) if k == "x"
+        ));
+        assert!(matches!(
+            pin(&mut c, "nope".into(), "~/x".into(), Some("p".into())),
+            Err(CoreError::KeyReserved(k, _)) if k == "p"
+        ));
+        assert!(matches!(
+            pin(&mut c, "nope".into(), "~/x".into(), Some("b".into())),
+            Err(CoreError::KeyReserved(k, _)) if k == "b"
+        ));
+        assert!(matches!(
+            pin(&mut c, "lab".into(), "~/lab".into(), Some("s".into())),
+            Err(CoreError::KeyTaken(k, lab)) if k == "s" && lab == "symworx"
+        ));
+        pin(&mut c, "symworx".into(), "~/src/symworx".into(), Some("s".into())).unwrap();
     }
 
     #[test]

@@ -19,8 +19,8 @@ It sits *on top*: favorites you chose, plus destinations your bashrc should not 
 ## What it is (shipped)
 
 - Pinned favorites in `~/.config/symjump/favorites.toml`
-- CLI: `sjmp list` / `jump` / `pin` / `kids` / `action` / `exec` / `toolbox`
-- `eval "$(sjmp init bash)"` defines `cdw`, binds `M-p` (places), `M-P` (kids), and `M-x` (actions from config), and **skips the whole hook** when `$INSIDE_EMACS` is set
+- CLI: `sjmp list` / `jump` / `pin` / `unpin` / `kids` / `action` / `exec` / `toolbox`
+- `eval "$(sjmp init bash)"` defines `jmp`, binds `M-p` (places), `M-P` (kids), and `M-x` (actions from config), and **skips the whole hook** when `$INSIDE_EMACS` is set
 - fzf picker: numbered picks `1`–`9` only while the query is empty
 
 Not wired yet: `M-RET` new window, zoxide, spawn backends. See [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -29,16 +29,20 @@ Not wired yet: `M-RET` new window, zoxide, spawn backends. See [docs/ROADMAP.md]
 
 ```bash
 cargo install --path crates/sjmp
-eval "$(sjmp init bash)"   # no-op when INSIDE_EMACS is set
+sjmp                       # first run writes ~/.config/symjump/favorites.toml
+eval "$(sjmp init bash)"   # shell hook; skip when INSIDE_EMACS
+sjmp pin --current --label src --keys r
 sjmp list
-sjmp jump s                # prints the path; the hook cds
 ```
 
-Copy [examples/favorites.toml](examples/favorites.toml) to
-`~/.config/symjump/favorites.toml` and edit the paths.
+`cargo install` only puts `sjmp` on `PATH` — Cargo has no post-install hook.
+The binary creates the config dir/file the first time you run it (default
+path only; `--config` is left alone). It will not overwrite an existing file.
+`sjmp init` prints the path; `sjmp init bash` prints the hook.
 
-If `sjmp` is missing from `PATH`, the hook does nothing. If the config file
-is missing, `list` prints nothing and `jump` errors.
+A fuller sample is [examples/favorites.toml](examples/favorites.toml).
+
+If `sjmp` is missing from `PATH`, the hook does nothing.
 
 ## Bindings (Meta, not Control)
 
@@ -49,6 +53,9 @@ Intended chords ([docs/DESIGN.md](docs/DESIGN.md)). Bound outside Emacs only.
 | `M-p` | terminal / tmux only | favorites / places |
 | `M-P` | same | kids of `$PWD` |
 | `M-x` | same, never in Emacs | action palette (`sjmp action list`) |
+| `M-<key>` | same | jump favorite `keys` (`M-w`, `M-j`, …) |
+
+`pin --keys` rejects `p` / `P` / `x` (sjmp chords), `b` / `f` / `d` / `y` (readline), and letters already used by another favorite.
 | `M-RET` | inside a picker | new tmux window/tab (not bound yet) |
 
 See DESIGN for the full table and `[[actions.toolbox]]` / `[[actions.agent]]` config.
@@ -59,7 +66,7 @@ See DESIGN for the full table and `[[actions.toolbox]]` / `[[actions.agent]]` co
 - Not a member of the `symworx` crate workspace (biosignal / load / dynamics)
 - Not a second Projectile — Emacs already switches projects; this hook stays off there
 - Does not replace git/docker/PATH setup in the user's shell kit
-- Replaces directory-jump helpers (`cdw`) and destination-style aliases only
+- Replaces directory-jump helpers and destination-style aliases only
 
 ## Names
 
@@ -67,7 +74,7 @@ See DESIGN for the full table and `[[actions.toolbox]]` / `[[actions.agent]]` co
 |---|---|
 | Repo / crate | `symjump` |
 | Binary | `sjmp` |
-| Shell alias | keep `cdw` as a wrapper |
+| Shell function | `jmp` |
 
 Avoided: SymTerm (reads as an emulator), SymKey (crypto), binary `sym` (taken).
 

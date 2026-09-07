@@ -12,8 +12,8 @@
 ## 1. Spike (done on `feature/cli-build`)
 
 - [x] Rust bin `sjmp`: `favorites.toml` (closed TOML subset, no serde)
-- [x] `list`, `jump`, `pin`, `kids`
-- [x] bash hook + `cdw`
+- [x] `list`, `jump`, `pin`, `unpin`, `kids`
+- [x] bash hook + `jmp`
 - [x] Bind `M-p` and **`M-x`** only if `INSIDE_EMACS` unset
 - [x] fzf picker (basic)
 - [x] `sjmp exec` / `sjmp action` / `sjmp toolbox`

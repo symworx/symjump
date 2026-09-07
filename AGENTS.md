@@ -14,7 +14,7 @@ Authoritative design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [docs/ROADMAP.m
 
 ## What to build (in order)
 
-Shipped: CLI `list` / `jump` / `pin` / `kids`, closed TOML subset, bash hook + `cdw`, `M-p` / `M-P` / `M-x` skipped when `INSIDE_EMACS`, numbered picks while the query is empty, `sjmp action` / `exec` / `toolbox`.
+Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bash hook + `jmp`, `M-p` / `M-P` / `M-x` skipped when `INSIDE_EMACS`, numbered picks while the query is empty, `sjmp action` / `exec` / `toolbox`.
 
 Remaining:
 
@@ -31,9 +31,12 @@ Do **not** start a VTE/GPU terminal emulator. Do **not** bind anything when `$IN
 | `M-p` | places |
 | `M-P` | kids of `$PWD` |
 | `M-x` | actions, bare terminal only |
+| `M-<key>` | jump favorite with that `keys` letter |
+
+`pin --keys` must refuse `p`/`P`/`x` (sjmp), `b`/`f`/`d`/`y` (readline), and duplicate favorite keys.
 | `M-RET` | new window/tab at selection |
 
-Never bind `C-g`, `C-c`, `C-x`, `C-z`, or global `M-x` / `M-w` under Emacs.
+Never bind `C-g`, `C-c`, `C-x`, `C-z`, or global `M-x` / `M-w` under Emacs. The hook stays off when `$INSIDE_EMACS` is set, so terminal `M-w` does not steal Emacs `M-w`.
 
 Ask first before changing chords or input priority in the picker.
 
@@ -68,7 +71,7 @@ Ask first before changing chords or input priority in the picker.
 ## Relation to the user's shell kit
 
 Git/docker/PATH and command aliases stay in the user's shell kit. This repo
-replaces directory-jump helpers (`cdw`) and destination-style aliases — not
+replaces directory-jump helpers (`jmp`) and destination-style aliases — not
 the rest of the shell.
 
 <!-- BEGIN symkit harness (do not edit this block) -->

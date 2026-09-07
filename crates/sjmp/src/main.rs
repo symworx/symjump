@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use symjump_config::{expand_user, Config};
 use symjump_core::{
     exec_line, find_agent, find_toolbox, is_git_root, kids, list_lines, pin, render_agent_cmd,
-    resolve_favorite, toolbox_enter_cmd,
+    reserved_meta_letters, resolve_favorite, toolbox_enter_cmd, unpin,
 };
 
 fn main() -> ExitCode {
@@ -32,10 +32,15 @@ fn take_config(args: &mut Vec<String>) -> Option<PathBuf> {
 fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let cfg_flag = take_config(&mut args);
     let home = env::var("HOME").map(PathBuf::from).or_else(|_| env::current_dir())?;
+    let explicit_config = cfg_flag.is_some();
     let cfg_path = match cfg_flag {
         Some(p) => p,
         None => Config::default_path()?,
     };
+    // cargo install cannot write files. First run on the default path does.
+    if !explicit_config {
+        ensure_config(&cfg_path)?;
+    }
     let cmd = args.first().map(String::as_str).unwrap_or("help");
     match cmd {
         "help" | "-h" | "--help" => print_help(),
@@ -56,6 +61,7 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             let mut path: Option<PathBuf> = None;
             let mut label: Option<String> = None;
             let mut keys: Option<String> = None;
+            let mut current = false;
             let mut i = 1;
             while i < args.len() {
                 match args[i].as_str() {
@@ -67,10 +73,14 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                         i += 1;
                         keys = args.get(i).cloned();
                     }
+                    "--current" => current = true,
                     s if !s.starts_with('-') => path = Some(PathBuf::from(s)),
                     other => return Err(format!("unknown pin flag: {other}").into()),
                 }
                 i += 1;
+            }
+            if current && path.is_some() {
+                return Err("pin: --current cannot be combined with a path".into());
             }
             let raw = match path {
                 Some(p) => p,
@@ -86,9 +96,16 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                     .map(|s| s.to_string_lossy().into_owned())
                     .unwrap_or_else(|| "pin".into())
             });
-            pin(&mut cfg, label, abs.to_string_lossy().into_owned(), keys);
+            pin(&mut cfg, label, abs.to_string_lossy().into_owned(), keys)?;
             cfg.save_path(&cfg_path)?;
             println!("{}", abs.display());
+        }
+        "unpin" => {
+            let q = args.get(1).ok_or("usage: sjmp unpin <label|key>")?;
+            let mut cfg = load_or_empty(&cfg_path)?;
+            let gone = unpin(&mut cfg, q)?;
+            cfg.save_path(&cfg_path)?;
+            println!("{}", gone.label);
         }
         "kids" => {
             let dir = match args.get(1) {
@@ -103,8 +120,20 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         "init" => match args.get(1).map(String::as_str) {
-            Some("bash") => print!("{}", bash_hook()),
-            _ => return Err("usage: sjmp init bash".into()),
+            None => {
+                if explicit_config {
+                    ensure_config(&cfg_path)?;
+                }
+                println!("{}", cfg_path.display());
+            }
+            Some("bash") => {
+                if explicit_config {
+                    ensure_config(&cfg_path)?;
+                }
+                let cfg = load_or_empty(&cfg_path)?;
+                print!("{}", bash_hook(&cfg));
+            }
+            _ => return Err("usage: sjmp init [bash]".into()),
         },
         "action" | "actions" => {
             let cfg = load_or_empty(&cfg_path)?;
@@ -175,8 +204,15 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 
 fn print_help() {
     println!(
-        "sjmp — symjump CLI\n  list | jump <q> | pin [path] [--label N] [--keys K]\n  kids [path] | init bash\n  action list | action agent <action> <fav>\n  exec <fav|path> --cmd <cmd>\n  toolbox list | toolbox enter <q>\n  --config PATH"
+        "sjmp — symjump CLI\n  list | jump <q> | pin [--current|path] [--label N] [--keys K] | unpin <q>\n  kids [path] | init [bash]\n  action list | action agent <action> <fav>\n  exec <fav|path> --cmd <cmd>\n  toolbox list | toolbox enter <q>\n  --config PATH"
     );
+}
+
+fn ensure_config(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    if Config::ensure_path(path)? {
+        eprintln!("sjmp: created {}", path.display());
+    }
+    Ok(())
 }
 
 fn load_or_empty(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
@@ -187,8 +223,25 @@ fn load_or_empty(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
     }
 }
 
-pub fn bash_hook() -> String {
-    r#"# sjmp / symjump — skip inside Emacs
+fn favorite_meta_binds(cfg: &Config) -> String {
+    let mut seen = reserved_meta_letters(cfg);
+    let mut out = String::new();
+    for fav in &cfg.favorites {
+        let Some(k) = fav.keys.as_deref() else { continue };
+        let mut chars = k.chars();
+        let Some(c) = chars.next() else { continue };
+        if chars.next().is_some() || !c.is_ascii_alphabetic() || !seen.insert(c) {
+            continue;
+        }
+        // Macro (not bind -x): cd inside bind -x is reverted when the widget ends.
+        out.push_str(&format!("  bind '\"\\e{c}\": \"\\C-u jmp {k}\\C-m\"'\n"));
+    }
+    out
+}
+
+pub fn bash_hook(cfg: &Config) -> String {
+    let mut hook = String::from(
+        r#"# sjmp / symjump — skip inside Emacs
 if [ -n "${INSIDE_EMACS:-}" ]; then
   return 0 2>/dev/null || exit 0
 fi
@@ -203,11 +256,13 @@ sjmp_fzf() {
     --bind 'change:transform:[[ -z "{q}" ]] && echo rebind(1,2,3,4,5,6,7,8,9) || echo unbind(1,2,3,4,5,6,7,8,9)'
 }
 sjmp_pick_fav() {
-  local sel
-  sel="$("$sjmp_bin" list | sjmp_fzf 'fav> ' | awk -F'\t' '{print $3}')" || return
-  [ -n "$sel" ] && printf '%s\n' "$sel"
+  local line key
+  line="$("$sjmp_bin" list | sjmp_fzf 'fav> ')" || return
+  [ -z "$line" ] && return
+  key=$(printf '%s\n' "$line" | awk '{print $1}')
+  [ -n "$key" ] && "$sjmp_bin" jump "$key"
 }
-cdw() {
+jmp() {
   if [ $# -eq 0 ]; then
     local sel
     sel="$(sjmp_pick_fav)" || return
@@ -218,7 +273,7 @@ cdw() {
   dest="$("$sjmp_bin" jump "$1")" || return
   cd -- "$dest"
 }
-sjmp_places() { cdw; }
+sjmp_places() { jmp; }
 sjmp_kids() {
   local sel
   sel="$("$sjmp_bin" kids | sjmp_fzf 'kids> ')" || return
@@ -242,29 +297,66 @@ sjmp_actions() {
   esac
 }
 if [ -n "${BASH_VERSION:-}" ]; then
-  bind -x '"\ep": sjmp_places'
-  bind -x '"\eP": sjmp_kids'
-  bind -x '"\ex": sjmp_actions'
-fi
+  # Readline macros, not bind -x: bash reverts cd after a bind -x widget.
+  bind '"\ep": "\C-u jmp\C-m"'
+  bind '"\eP": "\C-u sjmp_kids\C-m"'
+  bind '"\ex": "\C-u sjmp_actions\C-m"'
 "#
-    .to_string()
+            .to_string(),
+    );
+    hook.push_str(&favorite_meta_binds(cfg));
+    hook.push_str("fi\n");
+    hook
 }
 
 #[cfg(test)]
 mod tests {
     use super::bash_hook;
+    use symjump_config::{Config, Favorite};
+
     #[test]
     fn hook_skips_emacs_and_binds_meta() {
-        let h = bash_hook();
+        let h = bash_hook(&Config::default());
         assert!(h.contains("INSIDE_EMACS"));
-        assert!(h.contains(r#"bind -x '"\ep": sjmp_places'"#));
-        assert!(h.contains(r#"bind -x '"\eP": sjmp_kids'"#));
-        assert!(h.contains(r#"bind -x '"\ex": sjmp_actions'"#));
-        assert!(h.contains("cdw()"));
+        assert!(h.contains(r#"bind '"\ep": "\C-u jmp\C-m"'"#));
+        assert!(h.contains(r#"bind '"\eP": "\C-u sjmp_kids\C-m"'"#));
+        assert!(h.contains(r#"bind '"\ex": "\C-u sjmp_actions\C-m"'"#));
+        assert!(h.contains("jmp()"));
+        assert!(!h.contains("cdw()"));
         assert!(h.contains("action list"));
         assert!(!h.contains("verb list"));
         assert!(h.contains("pos(1)+accept"));
         assert!(h.contains(r#"unbind(1,2,3,4,5,6,7,8,9)"#));
         assert!(!h.contains("printf 'g\\tgrok-build"));
+        assert!(!h.contains(r#"jmp w"#));
+    }
+
+    #[test]
+    fn hook_binds_favorite_meta_keys_except_leader() {
+        let cfg = Config {
+            favorites: vec![
+                Favorite {
+                    label: "worx".into(),
+                    path: "~/worx".into(),
+                    keys: Some("w".into()),
+                },
+                Favorite {
+                    label: "symworx".into(),
+                    path: "~/src/symworx".into(),
+                    keys: Some("s".into()),
+                },
+                Favorite {
+                    label: "places".into(),
+                    path: "~/p".into(),
+                    keys: Some("p".into()),
+                },
+            ],
+            ..Config::default()
+        };
+        let h = bash_hook(&cfg);
+        assert!(h.contains(r#"bind '"\ew": "\C-u jmp w\C-m"'"#));
+        assert!(h.contains(r#"bind '"\es": "\C-u jmp s\C-m"'"#));
+        assert!(!h.contains(r#"jmp p"#));
+        assert!(h.contains(r#"bind '"\ep": "\C-u jmp\C-m"'"#));
     }
 }
