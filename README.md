@@ -3,46 +3,63 @@
 Cross-emulator directory favorites and jump list.
 
 **Binary:** `sjmp`  
-**Org:** [symworx](https://github.com/symworx) sibling repo — not part of the science workspace.  
-**Status:** private, design-first (`feature/initial-build`).
+**Org:** [symworx](https://github.com/symworx) sibling 
 
-A launcher for *places* (and later *verbs* like toolbox enter), not a terminal emulator and not a replacement for git/docker aliases.
+A launcher for *places* and *actions* (toolbox enter, agent exec), not a
+terminal emulator and not a replacement for git/docker aliases.
 
 ## Why this project
 
 I was screen-sharing with friends and colleagues, jumping between directories with aliases and shortcuts. I sent them my bashrc. It worked — after they rewrote paths and names for their machines. Not a huge tax, but enough to be annoying. I started thinking about a list that was not a private shell dialect.
 
-After trying [Omarchy](https://omarchy.org), I had a clearer picture: zoxide + fzf + a terminal-agnostic hook travel; a pile of `cdw` / `tb-python` aliases do not. I wanted something more portable — pinned places and a few verbs (toolbox) that install the same way on Kitty, foot, or Emacs vterm.
+After trying [Omarchy](https://omarchy.org), I had a clearer picture: zoxide + fzf + a terminal-agnostic hook travel; a pile of directory aliases do not. I wanted something more portable — pinned places and a few actions (toolbox) that install the same way on Kitty, foot, or a tmux pane.
 
-This is not a bid to replace Omarchy’s `cd`/`z` stack. It sits *on top*: favorites you chose, plus destinations your bashrc should not have to encode.
+It sits *on top*: favorites you chose, plus destinations your bashrc should not have to encode.
 
-## What it is
+## What it is (shipped)
 
-- Pinned favorites + optional frecency (zoxide or internal)
-- `M-p` opens the places list; Tab / j-k / `1`–`9` / type-to-filter; Enter jumps
-- Subdir listing when the target is **not** a git project
-- `M-x` verb palette in a bare terminal (toolbox, later ssh/exec); **not bound inside Emacs**
-- Works with Kitty, foot, GNOME Terminal/Ptyxis, WezTerm, and Emacs vterm via a **sidecar + shell hook**, not an in-emulator plugin
+- Pinned favorites in `~/.config/symjump/favorites.toml`
+- CLI: `sjmp list` / `jump` / `pin` / `kids` / `action` / `exec` / `toolbox`
+- `eval "$(sjmp init bash)"` defines `cdw`, binds `M-p` (places), `M-P` (kids), and `M-x` (actions from config), and **skips the whole hook** when `$INSIDE_EMACS` is set
+- fzf picker: numbered picks `1`–`9` only while the query is empty
+
+Not wired yet: `M-RET` new window, zoxide, spawn backends. See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Install
+
+```bash
+cargo install --path crates/sjmp
+eval "$(sjmp init bash)"   # no-op when INSIDE_EMACS is set
+sjmp list
+sjmp jump s                # prints the path; the hook cds
+```
+
+Copy [examples/favorites.toml](examples/favorites.toml) to
+`~/.config/symjump/favorites.toml` and edit the paths.
+
+If `sjmp` is missing from `PATH`, the hook does nothing. If the config file
+is missing, `list` prints nothing and `jump` errors.
 
 ## Bindings (Meta, not Control)
 
+Intended chords ([docs/DESIGN.md](docs/DESIGN.md)). Bound outside Emacs only.
+
 | Chord | Where | Action |
 |---|---|---|
-| `M-p` | everywhere | favorites / places |
-| `M-P` | everywhere | kids of `$PWD` |
-| `M-x` | Kitty / foot / GNOME / WezTerm only | verb palette (`t` = toolbox) |
-| `M-p t` | Emacs vterm | toolbox list (`M-x` stays Emacs) |
-| `M-RET` | inside picker | new terminal window/tab at selection |
+| `M-p` | terminal / tmux only | favorites / places |
+| `M-P` | same | kids of `$PWD` |
+| `M-x` | same, never in Emacs | action palette (`sjmp action list`) |
+| `M-RET` | inside a picker | new tmux window/tab (not bound yet) |
 
-See [docs/DESIGN.md](docs/DESIGN.md) for the full table and `[[verbs.toolbox]]` config.
+See DESIGN for the full table and `[[actions.toolbox]]` / `[[actions.agent]]` config.
 
 ## What it is not
 
 - Not a GPU terminal (see Kitty / foot / Alacritty / WezTerm)
-- Not in the `symworx` crate workspace (biosignal / load / dynamics)
-- Not a Bitterbeta or cSYMd product
-- Does not replace `gs` / `gacp` / `d` / `tb` / PATH setup in `ntberry/sysmgmt`
-- Replaces `cdw` and commented `tb-python`-style destination aliases only
+- Not a member of the `symworx` crate workspace (biosignal / load / dynamics)
+- Not a second Projectile — Emacs already switches projects; this hook stays off there
+- Does not replace git/docker/PATH setup in the user's shell kit
+- Replaces directory-jump helpers (`cdw`) and destination-style aliases only
 
 ## Names
 
@@ -61,18 +78,18 @@ Avoided: SymTerm (reads as an emulator), SymKey (crypto), binary `sym` (taken).
 | `main` | stable / empty-ish product line |
 | `develop` | integration |
 | `stage` | pre-release |
-| `feature/initial-build` | this design + first implementation |
+| `feature/cli-build` | CLI spike + this docs pass |
 
 Feature PRs target **`develop`**, not `main`. Path: `develop` → `stage` → `main` (same idea as [symworx](https://github.com/symworx/symworx)).
 
 ## Docs
 
-- [docs/DESIGN.md](docs/DESIGN.md) — architecture, Meta bindings, toolbox verbs, config, sysmgmt split
-- [docs/ROADMAP.md](docs/ROADMAP.md) — first implementation steps
+- [docs/DESIGN.md](docs/DESIGN.md) — architecture, Meta bindings, toolbox actions, config, shell-kit split
+- [docs/ROADMAP.md](docs/ROADMAP.md) — shipped vs next
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute
 - [DEVELOPMENT.md](DEVELOPMENT.md) — build / branch / release notes
 - [AGENTS.md](AGENTS.md) — guidelines for agentic tools
 
 ## License
 
-TBD (likely Apache-2.0 to match the personal symworx stack).
+Apache-2.0 intended (matches `Cargo.toml`). LICENSE file at public release.

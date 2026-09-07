@@ -1,12 +1,12 @@
 # Contributing to symjump
 
-Thank you for your interest. This is a small sibling of [SymWorx](https://github.com/symworx/symworx): a portable directory / verb launcher (`sjmp`), **not** the biosignal workspace.
+Thank you for your interest. This is a small sibling of [SymWorx](https://github.com/symworx/symworx): a portable directory / action launcher (`sjmp`), **not** the biosignal workspace.
 
 ## Philosophy
 
 - **Portable over personal.** Config and hooks should work on someone else’s machine without rewriting their bashrc.
-- **Sidecar, not an emulator plugin.** Kitty / foot / GNOME / vterm are spawn targets, not hosts for a shared ABI.
-- **Nouns vs verbs.** Places live here. Git/docker *commands* stay in the user’s shell kit (`sysmgmt`). Toolbox *destinations* can live here.
+- **Sidecar, not an emulator plugin.** Kitty / foot / GNOME / tmux are spawn targets, not hosts for a shared ABI.
+- **Places vs actions.** Places live here. Git/docker *commands* stay in the user’s shell kit. Toolbox *destinations* can live here.
 - **Meta, not Control.** Do not steal `C-g`, `C-c`, `C-x`, `C-z`. Do not bind `M-x` when `$INSIDE_EMACS` is set.
 
 Same quality bar as SymWorx: explicit errors, little `unsafe`, no surprise dependencies.
@@ -24,8 +24,8 @@ See [AGENTS.md](AGENTS.md).
 ## Ways to contribute
 
 - Issues (bugs, ports, emulator backends)
-- PRs (docs first is welcome — this repo is still design-first)
-- Tests once the Rust bin exists
+- PRs (docs-only is welcome)
+- Tests with behavior changes
 - Review
 
 No need to wait for an issue assignment.
@@ -40,11 +40,16 @@ No need to wait for an issue assignment.
 
 Do **not** open feature PRs to `main`.
 
+```bash
+cargo test --workspace
+cargo run -p sjmp -- list
+```
+
 ## Release path
 
 `develop` → `stage` (FF) → `release/vX.Y.Z` → PR to `main` → merge → **manual** tag `vX.Y.Z`
 
-Same shape as SymWorx; no crates.io publish until the crate exists and LICENSE is set.
+Same shape as SymWorx; no crates.io publish until LICENSE is set.
 
 ## Pull requests
 
@@ -57,7 +62,7 @@ Same shape as SymWorx; no crates.io publish until the crate exists and LICENSE i
 
 [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 
-Copyright intent matches the SymWorx stack (PalEm Dynamics LLC, Apache-2.0) once LICENSE is added.
+Apache-2.0 intended (`Cargo.toml`). LICENSE file at public release.
 
 ## Questions
 

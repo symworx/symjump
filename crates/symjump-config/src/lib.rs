@@ -1,7 +1,7 @@
 //! Config file types and I/O for symjump.
 //!
 //! Parser is a closed subset of TOML (no serde): root keys, `[keys]`,
-//! `[frequent]`, `[[favorites]]`, `[[verbs.toolbox]]`, `[[verbs.agent]]`.
+//! `[frequent]`, `[[favorites]]`, `[[actions.toolbox]]`, `[[actions.agent]]`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -22,14 +22,14 @@ pub struct Config {
     pub keys: Keys,
     pub frequent: Frequent,
     pub favorites: Vec<Favorite>,
-    pub verbs: Verbs,
+    pub actions: Actions,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keys {
     pub leader: String,
     pub kids: String,
-    pub verbs: String,
+    pub actions: String,
 }
 
 impl Default for Keys {
@@ -37,7 +37,7 @@ impl Default for Keys {
         Self {
             leader: "M-p".into(),
             kids: "M-P".into(),
-            verbs: "M-x".into(),
+            actions: "M-x".into(),
         }
     }
 }
@@ -65,20 +65,20 @@ pub struct Favorite {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Verbs {
-    pub toolbox: Vec<ToolboxVerb>,
-    pub agent: Vec<AgentVerb>,
+pub struct Actions {
+    pub toolbox: Vec<ToolboxAction>,
+    pub agent: Vec<AgentAction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolboxVerb {
+pub struct ToolboxAction {
     pub label: String,
     pub name: String,
     pub keys: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AgentVerb {
+pub struct AgentAction {
     pub label: String,
     pub cmd: String,
     pub keys: Option<String>,
@@ -159,12 +159,12 @@ fn parse_config(s: &str) -> Result<Config, ConfigError> {
                     path: String::new(),
                     keys: None,
                 }),
-                Section::Toolbox => cfg.verbs.toolbox.push(ToolboxVerb {
+                Section::Toolbox => cfg.actions.toolbox.push(ToolboxAction {
                     label: String::new(),
                     name: String::new(),
                     keys: None,
                 }),
-                Section::Agent => cfg.verbs.agent.push(AgentVerb {
+                Section::Agent => cfg.actions.agent.push(AgentAction {
                     label: String::new(),
                     cmd: String::new(),
                     keys: None,
@@ -196,8 +196,8 @@ fn parse_header(line: &str, line_no: usize) -> Result<Section, ConfigError> {
     if line.starts_with("[[") && line.ends_with("]]") {
         return match &line[2..line.len() - 2] {
             "favorites" => Ok(Section::Favorite),
-            "verbs.toolbox" => Ok(Section::Toolbox),
-            "verbs.agent" => Ok(Section::Agent),
+            "actions.toolbox" => Ok(Section::Toolbox),
+            "actions.agent" => Ok(Section::Agent),
             _ => Err(err()),
         };
     }
@@ -261,7 +261,7 @@ fn apply_kv(
             match key {
                 "leader" => cfg.keys.leader = s,
                 "kids" => cfg.keys.kids = s,
-                "verbs" => cfg.keys.verbs = s,
+                "actions" => cfg.keys.actions = s,
                 _ => return Err(bad()),
             }
         }
@@ -280,7 +280,7 @@ fn apply_kv(
             }
         }
         Section::Toolbox => {
-            let t = cfg.verbs.toolbox.last_mut().ok_or_else(bad)?;
+            let t = cfg.actions.toolbox.last_mut().ok_or_else(bad)?;
             match (key, val) {
                 ("label", Value::Str(s)) => t.label = s,
                 ("name", Value::Str(s)) => t.name = s,
@@ -289,7 +289,7 @@ fn apply_kv(
             }
         }
         Section::Agent => {
-            let a = cfg.verbs.agent.last_mut().ok_or_else(bad)?;
+            let a = cfg.actions.agent.last_mut().ok_or_else(bad)?;
             match (key, val) {
                 ("label", Value::Str(s)) => a.label = s,
                 ("cmd", Value::Str(s)) => a.cmd = s,
@@ -313,7 +313,7 @@ fn emit_config(cfg: &Config) -> String {
     out.push_str("[keys]\n");
     out.push_str(&format!("leader = {}\n", emit_string(&cfg.keys.leader)));
     out.push_str(&format!("kids = {}\n", emit_string(&cfg.keys.kids)));
-    out.push_str(&format!("verbs = {}\n\n", emit_string(&cfg.keys.verbs)));
+    out.push_str(&format!("actions = {}\n\n", emit_string(&cfg.keys.actions)));
     out.push_str("[frequent]\n");
     out.push_str(&format!("source = {}\n", emit_string(&cfg.frequent.source)));
     out.push_str(&format!("max = {}\n\n", cfg.frequent.max));
@@ -326,8 +326,8 @@ fn emit_config(cfg: &Config) -> String {
         }
         out.push('\n');
     }
-    for t in &cfg.verbs.toolbox {
-        out.push_str("[[verbs.toolbox]]\n");
+    for t in &cfg.actions.toolbox {
+        out.push_str("[[actions.toolbox]]\n");
         out.push_str(&format!("label = {}\n", emit_string(&t.label)));
         out.push_str(&format!("name = {}\n", emit_string(&t.name)));
         if let Some(k) = &t.keys {
@@ -335,8 +335,8 @@ fn emit_config(cfg: &Config) -> String {
         }
         out.push('\n');
     }
-    for a in &cfg.verbs.agent {
-        out.push_str("[[verbs.agent]]\n");
+    for a in &cfg.actions.agent {
+        out.push_str("[[actions.agent]]\n");
         out.push_str(&format!("label = {}\n", emit_string(&a.label)));
         out.push_str(&format!("cmd = {}\n", emit_string(&a.cmd)));
         if let Some(k) = &a.keys {
@@ -352,33 +352,33 @@ mod tests {
     use super::*;
 
     const SAMPLE: &str = r#"
-root = "~/worx"
+root = "~/src"
 
 [keys]
 leader = "M-p"
 kids = "M-P"
-verbs = "M-x"
+actions = "M-x"
 
 [frequent]
 source = "zoxide"
 max = 20
 
 [[favorites]]
-label = "worx"
-path = "~/worx"
-keys = "w"
+label = "src"
+path = "~/src"
+keys = "r"
 
 [[favorites]]
 label = "symworx"
-path = "~/worx/symworx"
+path = "~/src/symworx"
 keys = "s"
 
-[[verbs.toolbox]]
+[[actions.toolbox]]
 label = "python"
 name = "dev-python"
 keys = "p"
 
-[[verbs.agent]]
+[[actions.agent]]
 label = "grok-build"
 keys = "g"
 cmd = "grok"
@@ -387,10 +387,10 @@ cmd = "grok"
     #[test]
     fn parse_design_sample() {
         let c = Config::parse_str(SAMPLE).unwrap();
-        assert_eq!(c.root.as_deref(), Some("~/worx"));
+        assert_eq!(c.root.as_deref(), Some("~/src"));
         assert_eq!(c.keys.leader, "M-p");
         assert_eq!(c.favorites.len(), 2);
-        assert_eq!(c.verbs.agent[0].cmd, "grok");
+        assert_eq!(c.actions.agent[0].cmd, "grok");
     }
 
     #[test]
@@ -404,6 +404,7 @@ cmd = "grok"
     fn comments_and_unknown_header_fail() {
         assert_eq!(Config::parse_str("root = \"~/x\" # c\n").unwrap().root.as_deref(), Some("~/x"));
         assert!(Config::parse_str("[nope]\n").is_err());
+        assert!(Config::parse_str("[[verbs.agent]]\n").is_err());
     }
 
     #[test]
@@ -414,8 +415,8 @@ cmd = "grok"
 
     #[test]
     fn expand_tilde_and_home() {
-        let home = Path::new("/home/nate");
-        assert_eq!(expand_user("~/worx", home), PathBuf::from("/home/nate/worx"));
-        assert_eq!(expand_user("$HOME/a", home), PathBuf::from("/home/nate/a"));
+        let home = Path::new("/home/user");
+        assert_eq!(expand_user("~/src", home), PathBuf::from("/home/user/src"));
+        assert_eq!(expand_user("$HOME/a", home), PathBuf::from("/home/user/a"));
     }
 }

@@ -30,7 +30,7 @@ eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 ## Prerequisites
 
 - **Rust 1.86+**, edition **2024** (`rust-toolchain.toml` pins 1.86)
-- `fzf` for the picker in the bash hook
+- `fzf` for the picker in the bash hook (numbered picks use `transform` / `rebind`; older fzf still jumps on `1`–`9` but digits will not filter)
 - Optional: `zoxide`, `toolbox`, `grok`
 
 ```bash
@@ -57,4 +57,3 @@ cargo run -p sjmp -- list
 ## Related trees
 
 - SymWorx: https://github.com/symworx/symworx
-- `ntberry/sysmgmt`

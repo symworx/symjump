@@ -106,20 +106,20 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             Some("bash") => print!("{}", bash_hook()),
             _ => return Err("usage: sjmp init bash".into()),
         },
-        "verb" => {
+        "action" | "actions" => {
             let cfg = load_or_empty(&cfg_path)?;
             match args.get(1).map(String::as_str) {
                 Some("list") => {
-                    for a in &cfg.verbs.agent {
+                    for a in &cfg.actions.agent {
                         println!("agent\t{}\t{}\t{}", a.keys.as_deref().unwrap_or("-"), a.label, a.cmd);
                     }
-                    for t in &cfg.verbs.toolbox {
+                    for t in &cfg.actions.toolbox {
                         println!("toolbox\t{}\t{}\t{}", t.keys.as_deref().unwrap_or("-"), t.label, t.name);
                     }
                 }
                 Some("agent") => {
-                    let query = args.get(2).ok_or("usage: sjmp verb agent <verb> <fav>")?;
-                    let target = args.get(3).ok_or("usage: sjmp verb agent <verb> <fav>")?;
+                    let query = args.get(2).ok_or("usage: sjmp action agent <action> <fav>")?;
+                    let target = args.get(3).ok_or("usage: sjmp action agent <action> <fav>")?;
                     let agent = find_agent(&cfg, query)?;
                     let r = resolve_favorite(&cfg, target, &home)?;
                     println!("{}", render_agent_cmd(agent, &r.path));
@@ -127,7 +127,7 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                         eprintln!("{}", r.path.display());
                     }
                 }
-                _ => return Err("usage: sjmp verb list | sjmp verb agent <verb> <fav>".into()),
+                _ => return Err("usage: sjmp action list | sjmp action agent <action> <fav>".into()),
             }
         }
         "exec" => {
@@ -156,7 +156,7 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             let cfg = load_or_empty(&cfg_path)?;
             match args.get(1).map(String::as_str) {
                 Some("list") => {
-                    for t in &cfg.verbs.toolbox {
+                    for t in &cfg.actions.toolbox {
                         println!("{}\t{}\t{}", t.keys.as_deref().unwrap_or("-"), t.label, t.name);
                     }
                 }
@@ -175,7 +175,7 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 
 fn print_help() {
     println!(
-        "sjmp — symjump CLI\n  list | jump <q> | pin [path] [--label N] [--keys K]\n  kids [path] | init bash\n  verb list | verb agent <verb> <fav>\n  exec <fav|path> --cmd <cmd>\n  toolbox list | toolbox enter <q>\n  --config PATH"
+        "sjmp — symjump CLI\n  list | jump <q> | pin [path] [--label N] [--keys K]\n  kids [path] | init bash\n  action list | action agent <action> <fav>\n  exec <fav|path> --cmd <cmd>\n  toolbox list | toolbox enter <q>\n  --config PATH"
     );
 }
 
@@ -194,10 +194,23 @@ if [ -n "${INSIDE_EMACS:-}" ]; then
 fi
 sjmp_bin="$(command -v sjmp 2>/dev/null || true)"
 [ -z "$sjmp_bin" ] && return 0 2>/dev/null || true
+# Numbered picks 1-9 only while the query is empty (digits filter once you type).
+sjmp_fzf() {
+  local prompt="${1:-fav> }"
+  local height="${2:-40%}"
+  fzf --height="$height" --reverse --prompt="$prompt" \
+    --bind '1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept' \
+    --bind 'change:transform:[[ -z "{q}" ]] && echo rebind(1,2,3,4,5,6,7,8,9) || echo unbind(1,2,3,4,5,6,7,8,9)'
+}
+sjmp_pick_fav() {
+  local sel
+  sel="$("$sjmp_bin" list | sjmp_fzf 'fav> ' | awk -F'\t' '{print $3}')" || return
+  [ -n "$sel" ] && printf '%s\n' "$sel"
+}
 cdw() {
   if [ $# -eq 0 ]; then
     local sel
-    sel="$("$sjmp_bin" list | fzf --height=40% --reverse --prompt='fav> ' | awk -F'\t' '{print $3}')" || return
+    sel="$(sjmp_pick_fav)" || return
     [ -n "$sel" ] && cd -- "$sel"
     return
   fi
@@ -206,22 +219,32 @@ cdw() {
   cd -- "$dest"
 }
 sjmp_places() { cdw; }
-sjmp_verbs() {
-  local kind
-  kind="$(printf 'g\tgrok-build\nt\ttoolbox\ne\texec\n' | fzf --height=20% --reverse --prompt='verb> ' | awk -F'\t' '{print $1}')" || return
+sjmp_kids() {
+  local sel
+  sel="$("$sjmp_bin" kids | sjmp_fzf 'kids> ')" || return
+  [ -n "$sel" ] && cd -- "$sel"
+}
+sjmp_actions() {
+  local row kind payload sel
+  row="$("$sjmp_bin" action list | sjmp_fzf 'action> ' 20%)" || return
+  [ -z "$row" ] && return
+  kind=$(printf '%s\n' "$row" | awk -F'\t' '{print $1}')
+  payload=$(printf '%s\n' "$row" | awk -F'\t' '{print $4}')
   case "$kind" in
-    g) cdw && grok ;;
-    t)
-      local tb
-      tb="$("$sjmp_bin" toolbox list | fzf --height=20% --reverse --prompt='tb> ' | awk -F'\t' '{print $3}')" || return
-      [ -n "$tb" ] && toolbox enter "$tb"
+    toolbox)
+      [ -n "$payload" ] && toolbox enter "$payload"
       ;;
-    e) cdw ;;
+    agent)
+      sel="$(sjmp_pick_fav)" || return
+      [ -z "$sel" ] && return
+      eval "$("$sjmp_bin" exec "$sel" --cmd "$payload")"
+      ;;
   esac
 }
 if [ -n "${BASH_VERSION:-}" ]; then
   bind -x '"\ep": sjmp_places'
-  bind -x '"\ex": sjmp_verbs'
+  bind -x '"\eP": sjmp_kids'
+  bind -x '"\ex": sjmp_actions'
 fi
 "#
     .to_string()
@@ -235,7 +258,13 @@ mod tests {
         let h = bash_hook();
         assert!(h.contains("INSIDE_EMACS"));
         assert!(h.contains(r#"bind -x '"\ep": sjmp_places'"#));
-        assert!(h.contains(r#"bind -x '"\ex": sjmp_verbs'"#));
+        assert!(h.contains(r#"bind -x '"\eP": sjmp_kids'"#));
+        assert!(h.contains(r#"bind -x '"\ex": sjmp_actions'"#));
         assert!(h.contains("cdw()"));
+        assert!(h.contains("action list"));
+        assert!(!h.contains("verb list"));
+        assert!(h.contains("pos(1)+accept"));
+        assert!(h.contains(r#"unbind(1,2,3,4,5,6,7,8,9)"#));
+        assert!(!h.contains("printf 'g\\tgrok-build"));
     }
 }

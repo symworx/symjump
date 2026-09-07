@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "symjump CLI — list, jump, pin, verbs (toolbox / agent exec)"
+description = "symjump CLI — list, jump, pin, actions (toolbox / agent exec)"
 
 [[bin]]
 name = "sjmp"

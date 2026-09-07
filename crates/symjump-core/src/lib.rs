@@ -2,15 +2,15 @@
 //! The CLI prints paths; the shell hook is responsible for `cd`.
 
 use std::path::{Path, PathBuf};
-use symjump_config::{expand_user, AgentVerb, Config, Favorite, ToolboxVerb};
+use symjump_config::{expand_user, AgentAction, Config, Favorite, ToolboxAction};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum CoreError {
     #[error("no favorite matching `{0}`")]
     UnknownFavorite(String),
-    #[error("no agent verb matching `{0}`")]
+    #[error("no agent action matching `{0}`")]
     UnknownAgent(String),
-    #[error("no toolbox verb matching `{0}`")]
+    #[error("no toolbox action matching `{0}`")]
     UnknownToolbox(String),
     #[error("path is empty")]
     EmptyPath,
@@ -103,28 +103,28 @@ pub fn kids(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
     Ok(out)
 }
 
-pub fn render_agent_cmd(verb: &AgentVerb, path: &Path) -> String {
-    verb.cmd.replace("{path}", &path.display().to_string())
+pub fn render_agent_cmd(action: &AgentAction, path: &Path) -> String {
+    action.cmd.replace("{path}", &path.display().to_string())
 }
 
-pub fn find_agent<'a>(cfg: &'a Config, query: &str) -> Result<&'a AgentVerb, CoreError> {
-    cfg.verbs
+pub fn find_agent<'a>(cfg: &'a Config, query: &str) -> Result<&'a AgentAction, CoreError> {
+    cfg.actions
         .agent
         .iter()
-        .find(|v| v.label.eq_ignore_ascii_case(query) || v.keys.as_deref() == Some(query))
+        .find(|a| a.label.eq_ignore_ascii_case(query) || a.keys.as_deref() == Some(query))
         .ok_or_else(|| CoreError::UnknownAgent(query.into()))
 }
 
-pub fn find_toolbox<'a>(cfg: &'a Config, query: &str) -> Result<&'a ToolboxVerb, CoreError> {
-    cfg.verbs
+pub fn find_toolbox<'a>(cfg: &'a Config, query: &str) -> Result<&'a ToolboxAction, CoreError> {
+    cfg.actions
         .toolbox
         .iter()
-        .find(|v| v.label.eq_ignore_ascii_case(query) || v.keys.as_deref() == Some(query))
+        .find(|a| a.label.eq_ignore_ascii_case(query) || a.keys.as_deref() == Some(query))
         .ok_or_else(|| CoreError::UnknownToolbox(query.into()))
 }
 
-pub fn toolbox_enter_cmd(verb: &ToolboxVerb) -> String {
-    format!("toolbox enter {}", verb.name)
+pub fn toolbox_enter_cmd(action: &ToolboxAction) -> String {
+    format!("toolbox enter {}", action.name)
 }
 
 pub fn exec_line(cmd: &str, path: &Path) -> Result<String, CoreError> {
@@ -141,35 +141,35 @@ pub fn exec_line(cmd: &str, path: &Path) -> Result<String, CoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use symjump_config::{AgentVerb, Config, Favorite, ToolboxVerb, Verbs};
+    use symjump_config::{Actions, AgentAction, Config, Favorite, ToolboxAction};
 
     fn cfg() -> Config {
         Config {
             favorites: vec![
                 Favorite {
-                    label: "worx".into(),
-                    path: "~/worx".into(),
-                    keys: Some("w".into()),
+                    label: "src".into(),
+                    path: "~/src".into(),
+                    keys: Some("r".into()),
                 },
                 Favorite {
                     label: "symworx".into(),
-                    path: "~/worx/symworx".into(),
+                    path: "~/src/symworx".into(),
                     keys: Some("s".into()),
                 },
             ],
-            verbs: Verbs {
-                toolbox: vec![ToolboxVerb {
+            actions: Actions {
+                toolbox: vec![ToolboxAction {
                     label: "python".into(),
                     name: "dev-python".into(),
                     keys: Some("p".into()),
                 }],
                 agent: vec![
-                    AgentVerb {
+                    AgentAction {
                         label: "grok-build".into(),
                         cmd: "grok".into(),
                         keys: Some("g".into()),
                     },
-                    AgentVerb {
+                    AgentAction {
                         label: "codex".into(),
                         cmd: "codex -C {path}".into(),
                         keys: Some("c".into()),
@@ -182,19 +182,19 @@ mod tests {
 
     #[test]
     fn resolve_by_label_and_key() {
-        let home = Path::new("/home/nate");
+        let home = Path::new("/home/user");
         let c = cfg();
         let r = resolve_favorite(&c, "s", home).unwrap();
         assert_eq!(r.label, "symworx");
-        assert_eq!(r.path, PathBuf::from("/home/nate/worx/symworx"));
+        assert_eq!(r.path, PathBuf::from("/home/user/src/symworx"));
         assert!(matches!(resolve_favorite(&c, "nope", home), Err(CoreError::UnknownFavorite(_))));
     }
 
     #[test]
     fn list_is_stable_tsv() {
         let lines = list_lines(&cfg(), Path::new("/h"));
-        assert_eq!(lines[0], "w\tworx\t/h/worx");
-        assert_eq!(lines[1], "s\tsymworx\t/h/worx/symworx");
+        assert_eq!(lines[0], "r\tsrc\t/h/src");
+        assert_eq!(lines[1], "s\tsymworx\t/h/src/symworx");
     }
 
     #[test]
