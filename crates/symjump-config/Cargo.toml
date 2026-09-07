@@ -4,9 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "TOML config types for symjump (favorites, keys, verbs)"
+description = "Closed TOML-subset config for symjump"
 
 [dependencies]
-serde.workspace = true
-toml.workspace = true
 thiserror.workspace = true
