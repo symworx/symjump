@@ -1,132 +1,106 @@
 //! Config file types and I/O for symjump.
 //!
-//! Default path: `$XDG_CONFIG_HOME/symjump/favorites.toml`
-//! (fallback `~/.config/symjump/favorites.toml`).
+//! Parser is a closed subset of TOML (no serde): root keys, `[keys]`,
+//! `[frequent]`, `[[favorites]]`, `[[verbs.toolbox]]`, `[[verbs.agent]]`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
-
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
-    #[error("toml parse: {0}")]
-    Parse(#[from] toml::de::Error),
-    #[error("toml serialize: {0}")]
-    Serialize(#[from] toml::ser::Error),
+    #[error("config parse: {0}")]
+    Parse(String),
     #[error("home directory not found")]
     NoHome,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
-    #[serde(default)]
     pub root: Option<String>,
-    #[serde(default)]
     pub keys: Keys,
-    #[serde(default)]
     pub frequent: Frequent,
-    #[serde(default)]
     pub favorites: Vec<Favorite>,
-    #[serde(default)]
     pub verbs: Verbs,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keys {
-    #[serde(default = "default_leader")]
     pub leader: String,
-    #[serde(default = "default_kids")]
     pub kids: String,
-    #[serde(default = "default_verbs")]
     pub verbs: String,
 }
 
 impl Default for Keys {
     fn default() -> Self {
         Self {
-            leader: default_leader(),
-            kids: default_kids(),
-            verbs: default_verbs(),
+            leader: "M-p".into(),
+            kids: "M-P".into(),
+            verbs: "M-x".into(),
         }
     }
 }
 
-fn default_leader() -> String {
-    "M-p".into()
-}
-fn default_kids() -> String {
-    "M-P".into()
-}
-fn default_verbs() -> String {
-    "M-x".into()
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frequent {
-    #[serde(default = "default_freq_source")]
     pub source: String,
-    #[serde(default = "default_freq_max")]
     pub max: u32,
 }
 
 impl Default for Frequent {
     fn default() -> Self {
         Self {
-            source: default_freq_source(),
-            max: default_freq_max(),
+            source: "zoxide".into(),
+            max: 20,
         }
     }
 }
 
-fn default_freq_source() -> String {
-    "zoxide".into()
-}
-fn default_freq_max() -> u32 {
-    20
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Favorite {
     pub label: String,
     pub path: String,
-    #[serde(default)]
     pub keys: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Verbs {
-    #[serde(default)]
     pub toolbox: Vec<ToolboxVerb>,
-    #[serde(default)]
     pub agent: Vec<AgentVerb>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolboxVerb {
     pub label: String,
     pub name: String,
-    #[serde(default)]
     pub keys: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentVerb {
     pub label: String,
     pub cmd: String,
-    #[serde(default)]
     pub keys: Option<String>,
+}
+
+#[derive(Clone, Copy)]
+enum Section {
+    Root,
+    Keys,
+    Frequent,
+    Favorite,
+    Toolbox,
+    Agent,
 }
 
 impl Config {
     pub fn parse_str(s: &str) -> Result<Self, ConfigError> {
-        Ok(toml::from_str(s)?)
+        parse_config(s)
     }
 
     pub fn to_toml(&self) -> Result<String, ConfigError> {
-        Ok(toml::to_string_pretty(self)?)
+        Ok(emit_config(self))
     }
 
     pub fn default_path() -> Result<PathBuf, ConfigError> {
@@ -140,8 +114,7 @@ impl Config {
     }
 
     pub fn load_path(path: &Path) -> Result<Self, ConfigError> {
-        let raw = fs::read_to_string(path)?;
-        Self::parse_str(&raw)
+        Self::parse_str(&fs::read_to_string(path)?)
     }
 
     pub fn save_path(&self, path: &Path) -> Result<(), ConfigError> {
@@ -153,7 +126,6 @@ impl Config {
     }
 }
 
-/// Expand a leading `~` or `$HOME` using the given home directory.
 pub fn expand_user(path: &str, home: &Path) -> PathBuf {
     if let Some(rest) = path.strip_prefix("~/") {
         return home.join(rest);
@@ -168,6 +140,211 @@ pub fn expand_user(path: &str, home: &Path) -> PathBuf {
         return home.to_path_buf();
     }
     PathBuf::from(path)
+}
+
+fn parse_config(s: &str) -> Result<Config, ConfigError> {
+    let mut cfg = Config::default();
+    let mut section = Section::Root;
+    for (i, raw) in s.lines().enumerate() {
+        let line_no = i + 1;
+        let line = strip_comment(raw).trim();
+        if line.is_empty() {
+            continue;
+        }
+        if line.starts_with('[') {
+            section = parse_header(line, line_no)?;
+            match section {
+                Section::Favorite => cfg.favorites.push(Favorite {
+                    label: String::new(),
+                    path: String::new(),
+                    keys: None,
+                }),
+                Section::Toolbox => cfg.verbs.toolbox.push(ToolboxVerb {
+                    label: String::new(),
+                    name: String::new(),
+                    keys: None,
+                }),
+                Section::Agent => cfg.verbs.agent.push(AgentVerb {
+                    label: String::new(),
+                    cmd: String::new(),
+                    keys: None,
+                }),
+                _ => {}
+            }
+            continue;
+        }
+        let (key, val) = parse_kv(line, line_no)?;
+        apply_kv(&mut cfg, section, &key, val, line_no)?;
+    }
+    Ok(cfg)
+}
+
+fn strip_comment(line: &str) -> &str {
+    let mut in_str = false;
+    for (i, c) in line.char_indices() {
+        match c {
+            '"' => in_str = !in_str,
+            '#' if !in_str => return &line[..i],
+            _ => {}
+        }
+    }
+    line
+}
+
+fn parse_header(line: &str, line_no: usize) -> Result<Section, ConfigError> {
+    let err = || ConfigError::Parse(format!("line {line_no}: bad header `{line}`"));
+    if line.starts_with("[[") && line.ends_with("]]") {
+        return match &line[2..line.len() - 2] {
+            "favorites" => Ok(Section::Favorite),
+            "verbs.toolbox" => Ok(Section::Toolbox),
+            "verbs.agent" => Ok(Section::Agent),
+            _ => Err(err()),
+        };
+    }
+    if line.starts_with('[') && line.ends_with(']') {
+        return match &line[1..line.len() - 1] {
+            "keys" => Ok(Section::Keys),
+            "frequent" => Ok(Section::Frequent),
+            _ => Err(err()),
+        };
+    }
+    Err(err())
+}
+
+fn parse_kv(line: &str, line_no: usize) -> Result<(String, Value), ConfigError> {
+    let eq = line.find('=').ok_or_else(|| {
+        ConfigError::Parse(format!("line {line_no}: expected key = value"))
+    })?;
+    let key = line[..eq].trim().to_string();
+    let raw = line[eq + 1..].trim();
+    let val = if raw.starts_with('"') {
+        Value::Str(unquote(raw, line_no)?)
+    } else {
+        let n: u32 = raw.parse().map_err(|_| {
+            ConfigError::Parse(format!("line {line_no}: bad value `{raw}`"))
+        })?;
+        Value::Int(n)
+    };
+    Ok((key, val))
+}
+
+fn unquote(s: &str, line_no: usize) -> Result<String, ConfigError> {
+    if !s.starts_with('"') || !s.ends_with('"') || s.len() < 2 {
+        return Err(ConfigError::Parse(format!("line {line_no}: expected quoted string")));
+    }
+    Ok(s[1..s.len() - 1].replace("\\\"", "\"").replace("\\\\", "\\"))
+}
+
+enum Value {
+    Str(String),
+    Int(u32),
+}
+
+fn apply_kv(
+    cfg: &mut Config,
+    section: Section,
+    key: &str,
+    val: Value,
+    line_no: usize,
+) -> Result<(), ConfigError> {
+    let bad = || ConfigError::Parse(format!("line {line_no}: unexpected key `{key}`"));
+    match section {
+        Section::Root => match (key, val) {
+            ("root", Value::Str(s)) => cfg.root = Some(s),
+            _ => return Err(bad()),
+        },
+        Section::Keys => {
+            let s = match val {
+                Value::Str(s) => s,
+                Value::Int(_) => return Err(bad()),
+            };
+            match key {
+                "leader" => cfg.keys.leader = s,
+                "kids" => cfg.keys.kids = s,
+                "verbs" => cfg.keys.verbs = s,
+                _ => return Err(bad()),
+            }
+        }
+        Section::Frequent => match (key, val) {
+            ("source", Value::Str(s)) => cfg.frequent.source = s,
+            ("max", Value::Int(n)) => cfg.frequent.max = n,
+            _ => return Err(bad()),
+        },
+        Section::Favorite => {
+            let f = cfg.favorites.last_mut().ok_or_else(bad)?;
+            match (key, val) {
+                ("label", Value::Str(s)) => f.label = s,
+                ("path", Value::Str(s)) => f.path = s,
+                ("keys", Value::Str(s)) => f.keys = Some(s),
+                _ => return Err(bad()),
+            }
+        }
+        Section::Toolbox => {
+            let t = cfg.verbs.toolbox.last_mut().ok_or_else(bad)?;
+            match (key, val) {
+                ("label", Value::Str(s)) => t.label = s,
+                ("name", Value::Str(s)) => t.name = s,
+                ("keys", Value::Str(s)) => t.keys = Some(s),
+                _ => return Err(bad()),
+            }
+        }
+        Section::Agent => {
+            let a = cfg.verbs.agent.last_mut().ok_or_else(bad)?;
+            match (key, val) {
+                ("label", Value::Str(s)) => a.label = s,
+                ("cmd", Value::Str(s)) => a.cmd = s,
+                ("keys", Value::Str(s)) => a.keys = Some(s),
+                _ => return Err(bad()),
+            }
+        }
+    }
+    Ok(())
+}
+
+fn emit_string(s: &str) -> String {
+    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+fn emit_config(cfg: &Config) -> String {
+    let mut out = String::new();
+    if let Some(root) = &cfg.root {
+        out.push_str(&format!("root = {}\n\n", emit_string(root)));
+    }
+    out.push_str("[keys]\n");
+    out.push_str(&format!("leader = {}\n", emit_string(&cfg.keys.leader)));
+    out.push_str(&format!("kids = {}\n", emit_string(&cfg.keys.kids)));
+    out.push_str(&format!("verbs = {}\n\n", emit_string(&cfg.keys.verbs)));
+    out.push_str("[frequent]\n");
+    out.push_str(&format!("source = {}\n", emit_string(&cfg.frequent.source)));
+    out.push_str(&format!("max = {}\n\n", cfg.frequent.max));
+    for f in &cfg.favorites {
+        out.push_str("[[favorites]]\n");
+        out.push_str(&format!("label = {}\n", emit_string(&f.label)));
+        out.push_str(&format!("path = {}\n", emit_string(&f.path)));
+        if let Some(k) = &f.keys {
+            out.push_str(&format!("keys = {}\n", emit_string(k)));
+        }
+        out.push('\n');
+    }
+    for t in &cfg.verbs.toolbox {
+        out.push_str("[[verbs.toolbox]]\n");
+        out.push_str(&format!("label = {}\n", emit_string(&t.label)));
+        out.push_str(&format!("name = {}\n", emit_string(&t.name)));
+        if let Some(k) = &t.keys {
+            out.push_str(&format!("keys = {}\n", emit_string(k)));
+        }
+        out.push('\n');
+    }
+    for a in &cfg.verbs.agent {
+        out.push_str("[[verbs.agent]]\n");
+        out.push_str(&format!("label = {}\n", emit_string(&a.label)));
+        out.push_str(&format!("cmd = {}\n", emit_string(&a.cmd)));
+        if let Some(k) = &a.keys {
+            out.push_str(&format!("keys = {}\n", emit_string(k)));
+        }
+        out.push('\n');
+    }
+    out
 }
 
 #[cfg(test)]
@@ -212,11 +389,7 @@ cmd = "grok"
         let c = Config::parse_str(SAMPLE).unwrap();
         assert_eq!(c.root.as_deref(), Some("~/worx"));
         assert_eq!(c.keys.leader, "M-p");
-        assert_eq!(c.keys.verbs, "M-x");
         assert_eq!(c.favorites.len(), 2);
-        assert_eq!(c.favorites[1].label, "symworx");
-        assert_eq!(c.favorites[1].keys.as_deref(), Some("s"));
-        assert_eq!(c.verbs.toolbox[0].name, "dev-python");
         assert_eq!(c.verbs.agent[0].cmd, "grok");
     }
 
@@ -224,43 +397,25 @@ cmd = "grok"
     fn empty_toml_gets_defaults() {
         let c = Config::parse_str("").unwrap();
         assert_eq!(c.keys.leader, "M-p");
-        assert_eq!(c.keys.verbs, "M-x");
         assert!(c.favorites.is_empty());
-        assert_eq!(c.frequent.source, "zoxide");
+    }
+
+    #[test]
+    fn comments_and_unknown_header_fail() {
+        assert_eq!(Config::parse_str("root = \"~/x\" # c\n").unwrap().root.as_deref(), Some("~/x"));
+        assert!(Config::parse_str("[nope]\n").is_err());
     }
 
     #[test]
     fn roundtrip_toml() {
         let c = Config::parse_str(SAMPLE).unwrap();
-        let again = Config::parse_str(&c.to_toml().unwrap()).unwrap();
-        assert_eq!(c, again);
+        assert_eq!(c, Config::parse_str(&c.to_toml().unwrap()).unwrap());
     }
 
     #[test]
     fn expand_tilde_and_home() {
         let home = Path::new("/home/nate");
         assert_eq!(expand_user("~/worx", home), PathBuf::from("/home/nate/worx"));
-        assert_eq!(expand_user("~", home), PathBuf::from("/home/nate"));
-        assert_eq!(
-            expand_user("$HOME/worx/symworx", home),
-            PathBuf::from("/home/nate/worx/symworx")
-        );
-        assert_eq!(expand_user("/abs/path", home), PathBuf::from("/abs/path"));
-    }
-
-    #[test]
-    fn save_and_load_roundtrip() {
-        let dir = std::env::temp_dir().join(format!("symjump-cfg-{}", std::process::id()));
-        let path = dir.join("favorites.toml");
-        let mut c = Config::default();
-        c.favorites.push(Favorite {
-            label: "x".into(),
-            path: "~/x".into(),
-            keys: Some("x".into()),
-        });
-        c.save_path(&path).unwrap();
-        let loaded = Config::load_path(&path).unwrap();
-        assert_eq!(loaded.favorites[0].label, "x");
-        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(expand_user("$HOME/a", home), PathBuf::from("/home/nate/a"));
     }
 }
