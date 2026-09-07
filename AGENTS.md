@@ -66,3 +66,7 @@ Rust crate layout does not exist yet. When it does: binary `sjmp`, library only 
 ## Relation to sysmgmt
 
 `ntberry/sysmgmt` keeps git/docker/PATH/`tb` command aliases. This repo replaces `cdw` and destination-style `tb-python` entries — not `gs` or `tb` itself.
+
+<!-- BEGIN symkit harness (do not edit this block) -->
+Read [`AGENTS-SYMKIT.md`](AGENTS-SYMKIT.md) and follow it as additional always-on project rules from the installed symkit harness. Instructions in this `AGENTS.md` take precedence when they conflict.
+<!-- END symkit harness -->

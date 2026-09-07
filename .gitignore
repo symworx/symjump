@@ -3,3 +3,18 @@
 .idea/
 .vscode/
 *.swp
+
+# BEGIN symkit agent trees (do not commit)
+# Installed by symkit — local agent config and editor swap/backup files
+.agents/
+.grok/
+.claude/
+.codex/
+.symkit/
+*~
+.*.swp
+.*.swo
+*.un~
+\#*\#
+.#*
+# END symkit agent trees
