@@ -1,0 +1,10 @@
+[package]
+name = "symjump-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Closed TOML-subset config for symjump"
+
+[dependencies]
+thiserror.workspace = true

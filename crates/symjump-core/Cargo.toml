@@ -1,0 +1,11 @@
+[package]
+name = "symjump-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Resolve favorites, pin paths, build exec/toolbox commands"
+
+[dependencies]
+symjump-config.workspace = true
+thiserror.workspace = true

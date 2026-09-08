@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/symjump-config",
+    "crates/symjump-core",
+    "crates/sjmp",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+license = "Apache-2.0"
+repository = "https://github.com/symworx/symjump"
+
+[workspace.dependencies]
+symjump-config = { path = "crates/symjump-config", version = "0.1.0" }
+symjump-core = { path = "crates/symjump-core", version = "0.1.0" }
+thiserror = "=1.0.50"

@@ -1,0 +1,31 @@
+root = "~/src"
+
+[keys]
+leader = "M-p"
+kids = "M-P"
+actions = "M-x"
+
+[[favorites]]
+label = "src"
+path = "~/src"
+keys = "r"
+
+[[favorites]]
+label = "symworx"
+path = "~/src/symworx"
+keys = "s"
+
+[[actions.toolbox]]
+label = "python"
+name = "dev-python"
+keys = "p"
+
+[[actions.agent]]
+label = "grok-build"
+keys = "g"
+cmd = "grok"
+
+[[actions.agent]]
+label = "codex"
+keys = "c"
+cmd = "codex -C {path}"
