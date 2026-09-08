@@ -14,7 +14,7 @@ Authoritative design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [docs/ROADMAP.m
 
 ## What to build (in order)
 
-Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bash hook + `jmp`, `M-p` / `M-P` / `M-x` skipped when `INSIDE_EMACS`, numbered picks while the query is empty, `sjmp action` / `exec` / `toolbox`.
+Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bash hook + `jmp`, `M-p` / `M-P` / `M-x` skipped when `INSIDE_EMACS`, numbered picks while the query is empty, `sjmp action` / `action add` / `exec` / `toolbox`.
 
 Remaining:
 

@@ -15,7 +15,8 @@ This repo is a sibling of [symworx/symworx](https://github.com/symworx/symworx),
 Not `symworx.jump` — that is npm/PyPI namespacing. Cargo cannot use a dotted package name like that, and it would look like a workspace member of the science stack.
 
 ```bash
-cargo install --path crates/sjmp
+# Host has no rustup. Build/install from the rust toolbox onto ~/.local/bin:
+toolbox run -c dev-rust cargo install --path crates/sjmp --root "$HOME/.local"
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
 eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 ```

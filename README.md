@@ -32,6 +32,8 @@ cargo install --path crates/sjmp
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
 eval "$(sjmp init bash)"   # shell hook; skip when INSIDE_EMACS
 sjmp pin --current --label src --keys r
+sjmp action add agent --cmd grok --keys g --label grok-build
+sjmp action add toolbox --name dev-python --keys p --label python
 sjmp list
 ```
 

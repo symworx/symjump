@@ -27,6 +27,10 @@ pub enum CoreError {
     KeyReserved(String, String),
     #[error("key `{0}` already used by `{1}`")]
     KeyTaken(String, String),
+    #[error("action command is empty")]
+    EmptyCmd,
+    #[error("toolbox name is empty")]
+    EmptyToolboxName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,6 +158,94 @@ pub fn pin(cfg: &mut Config, label: String, path: String, keys: Option<String>) 
         return Ok(());
     }
     cfg.favorites.push(Favorite { label, path, keys });
+    Ok(())
+}
+
+fn action_key_taken<'a>(cfg: &'a Config, key: &str, except_label: Option<&str>) -> Option<&'a str> {
+    cfg.actions
+        .agent
+        .iter()
+        .find(|a| {
+            a.keys.as_deref() == Some(key)
+                && except_label.is_none_or(|lab| !a.label.eq_ignore_ascii_case(lab))
+        })
+        .map(|a| a.label.as_str())
+        .or_else(|| {
+            cfg.actions
+                .toolbox
+                .iter()
+                .find(|t| {
+                    t.keys.as_deref() == Some(key)
+                        && except_label.is_none_or(|lab| !t.label.eq_ignore_ascii_case(lab))
+                })
+                .map(|t| t.label.as_str())
+        })
+}
+
+pub fn check_action_key(cfg: &Config, key: &str, except_label: Option<&str>) -> Result<(), CoreError> {
+    let k = key.trim();
+    if k.is_empty() {
+        return Ok(());
+    }
+    if let Some(other) = action_key_taken(cfg, k, except_label) {
+        return Err(CoreError::KeyTaken(k.into(), other.into()));
+    }
+    Ok(())
+}
+
+pub fn add_agent(
+    cfg: &mut Config,
+    label: String,
+    cmd: String,
+    keys: Option<String>,
+) -> Result<(), CoreError> {
+    if cmd.trim().is_empty() {
+        return Err(CoreError::EmptyCmd);
+    }
+    if let Some(k) = keys.as_deref() {
+        check_action_key(cfg, k, Some(&label))?;
+    }
+    if let Some(existing) = cfg
+        .actions
+        .agent
+        .iter_mut()
+        .find(|a| a.label.eq_ignore_ascii_case(&label))
+    {
+        existing.cmd = cmd;
+        if keys.is_some() {
+            existing.keys = keys;
+        }
+        return Ok(());
+    }
+    cfg.actions.agent.push(AgentAction { label, cmd, keys });
+    Ok(())
+}
+
+pub fn add_toolbox(
+    cfg: &mut Config,
+    label: String,
+    name: String,
+    keys: Option<String>,
+) -> Result<(), CoreError> {
+    if name.trim().is_empty() {
+        return Err(CoreError::EmptyToolboxName);
+    }
+    if let Some(k) = keys.as_deref() {
+        check_action_key(cfg, k, Some(&label))?;
+    }
+    if let Some(existing) = cfg
+        .actions
+        .toolbox
+        .iter_mut()
+        .find(|t| t.label.eq_ignore_ascii_case(&label))
+    {
+        existing.name = name;
+        if keys.is_some() {
+            existing.keys = keys;
+        }
+        return Ok(());
+    }
+    cfg.actions.toolbox.push(ToolboxAction { label, name, keys });
     Ok(())
 }
 
@@ -325,6 +417,20 @@ mod tests {
             Err(CoreError::KeyTaken(k, lab)) if k == "s" && lab == "symworx"
         ));
         pin(&mut c, "symworx".into(), "~/src/symworx".into(), Some("s".into())).unwrap();
+    }
+
+    #[test]
+    fn add_action_updates_and_rejects_taken_keys() {
+        let mut c = cfg();
+        add_agent(&mut c, "grok-build".into(), "grok --foo".into(), None).unwrap();
+        assert_eq!(c.actions.agent[0].cmd, "grok --foo");
+        assert!(matches!(
+            add_agent(&mut c, "other".into(), "echo".into(), Some("g".into())),
+            Err(CoreError::KeyTaken(k, lab)) if k == "g" && lab == "grok-build"
+        ));
+        add_toolbox(&mut c, "rust".into(), "dev-rust".into(), Some("r".into())).unwrap();
+        assert_eq!(c.actions.toolbox.len(), 2);
+        assert!(matches!(add_agent(&mut c, "x".into(), " ".into(), None), Err(CoreError::EmptyCmd)));
     }
 
     #[test]

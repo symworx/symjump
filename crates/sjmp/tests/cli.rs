@@ -38,6 +38,25 @@ fn jump_list_exec_toolbox() {
     assert_eq!(String::from_utf8_lossy(&tb.stdout).trim(), "toolbox enter dev-python");
     let va = bin().args(["--config", c, "action", "agent", "c", "s"]).env("HOME", "/home/user").output().unwrap();
     assert!(String::from_utf8_lossy(&va.stdout).contains("codex -C /home/user/src/symworx"));
+    let add = bin()
+        .args(["--config", c, "action", "add", "agent", "--cmd", "grok", "--keys", "g", "--label", "grok-build"])
+        .output()
+        .unwrap();
+    assert!(add.status.success(), "{}", String::from_utf8_lossy(&add.stderr));
+    let listed = bin().args(["--config", c, "action", "list"]).output().unwrap();
+    let listed_s = String::from_utf8_lossy(&listed.stdout);
+    assert!(listed_s.contains("grok-build"));
+    assert!(listed_s.contains("codex"));
+    let taken = bin()
+        .args(["--config", c, "action", "add", "agent", "--cmd", "echo", "--keys", "c"])
+        .output()
+        .unwrap();
+    assert!(!taken.status.success());
+    let tb_add = bin()
+        .args(["--config", c, "action", "add", "toolbox", "--name", "dev-rust", "--keys", "r", "--label", "rust"])
+        .output()
+        .unwrap();
+    assert!(tb_add.status.success(), "{}", String::from_utf8_lossy(&tb_add.stderr));
     let _ = fs::remove_dir_all(&tmp);
 }
 

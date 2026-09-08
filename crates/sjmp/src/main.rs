@@ -5,8 +5,8 @@ use std::process::ExitCode;
 
 use symjump_config::{expand_user, Config};
 use symjump_core::{
-    exec_line, find_agent, find_toolbox, is_git_root, kids, list_lines, pin, render_agent_cmd,
-    reserved_meta_letters, resolve_favorite, toolbox_enter_cmd, unpin,
+    add_agent, add_toolbox, exec_line, find_agent, find_toolbox, is_git_root, kids, list_lines, pin,
+    render_agent_cmd, reserved_meta_letters, resolve_favorite, toolbox_enter_cmd, unpin,
 };
 
 fn main() -> ExitCode {
@@ -136,9 +136,9 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             _ => return Err("usage: sjmp init [bash]".into()),
         },
         "action" | "actions" => {
-            let cfg = load_or_empty(&cfg_path)?;
             match args.get(1).map(String::as_str) {
                 Some("list") => {
+                    let cfg = load_or_empty(&cfg_path)?;
                     for a in &cfg.actions.agent {
                         println!("agent\t{}\t{}\t{}", a.keys.as_deref().unwrap_or("-"), a.label, a.cmd);
                     }
@@ -147,6 +147,7 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 Some("agent") => {
+                    let cfg = load_or_empty(&cfg_path)?;
                     let query = args.get(2).ok_or("usage: sjmp action agent <action> <fav>")?;
                     let target = args.get(3).ok_or("usage: sjmp action agent <action> <fav>")?;
                     let agent = find_agent(&cfg, query)?;
@@ -156,7 +157,74 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                         eprintln!("{}", r.path.display());
                     }
                 }
-                _ => return Err("usage: sjmp action list | sjmp action agent <action> <fav>".into()),
+                Some("add") => {
+                    let kind = args.get(2).map(String::as_str).ok_or(
+                        "usage: sjmp action add agent --cmd CMD [--label N] [--keys K]\n       sjmp action add toolbox --name NAME [--label N] [--keys K]",
+                    )?;
+                    let mut label: Option<String> = None;
+                    let mut keys: Option<String> = None;
+                    let mut cmd: Option<String> = None;
+                    let mut name: Option<String> = None;
+                    let mut i = 3;
+                    while i < args.len() {
+                        match args[i].as_str() {
+                            "--label" => {
+                                i += 1;
+                                label = args.get(i).cloned();
+                            }
+                            "--keys" => {
+                                i += 1;
+                                keys = args.get(i).cloned();
+                            }
+                            "--cmd" => {
+                                i += 1;
+                                cmd = args.get(i).cloned();
+                            }
+                            "--name" => {
+                                i += 1;
+                                name = args.get(i).cloned();
+                            }
+                            other => return Err(format!("unknown action add flag: {other}").into()),
+                        }
+                        i += 1;
+                    }
+                    let mut cfg = load_or_empty(&cfg_path)?;
+                    match kind {
+                        "agent" => {
+                            let cmd = cmd.ok_or("usage: sjmp action add agent --cmd CMD [--label N] [--keys K]")?;
+                            let label = label.unwrap_or_else(|| {
+                                cmd.split_whitespace()
+                                    .next()
+                                    .unwrap_or("agent")
+                                    .to_string()
+                            });
+                            add_agent(&mut cfg, label.clone(), cmd, keys)?;
+                            cfg.save_path(&cfg_path)?;
+                            println!("{label}");
+                        }
+                        "toolbox" => {
+                            let name = name.ok_or(
+                                "usage: sjmp action add toolbox --name NAME [--label N] [--keys K]",
+                            )?;
+                            let label = label.unwrap_or_else(|| name.clone());
+                            add_toolbox(&mut cfg, label.clone(), name, keys)?;
+                            cfg.save_path(&cfg_path)?;
+                            println!("{label}");
+                        }
+                        _ => {
+                            return Err(
+                                "usage: sjmp action add agent --cmd CMD [--label N] [--keys K]\n       sjmp action add toolbox --name NAME [--label N] [--keys K]"
+                                    .into(),
+                            )
+                        }
+                    }
+                }
+                _ => {
+                    return Err(
+                        "usage: sjmp action list | action add agent|toolbox | action agent <action> <fav>"
+                            .into(),
+                    )
+                }
             }
         }
         "exec" => {
@@ -204,7 +272,7 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 
 fn print_help() {
     println!(
-        "sjmp — symjump CLI\n  list | jump <q> | pin [--current|path] [--label N] [--keys K] | unpin <q>\n  kids [path] | init [bash]\n  action list | action agent <action> <fav>\n  exec <fav|path> --cmd <cmd>\n  toolbox list | toolbox enter <q>\n  --config PATH"
+        "sjmp — symjump CLI\n  list | jump <q> | pin [--current|path] [--label N] [--keys K] | unpin <q>\n  kids [path] | init [bash]\n  action list | action add agent --cmd C [--label N] [--keys K]\n  action add toolbox --name N [--label N] [--keys K]\n  action agent <action> <fav>\n  exec <fav|path> --cmd <cmd>\n  toolbox list | toolbox enter <q>\n  --config PATH"
     );
 }
 
