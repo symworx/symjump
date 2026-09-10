@@ -1,3 +1,6 @@
+// Copyright (c) 2026 PalEm Dynamics LLC
+// Licensed under the Apache License, Version 2.0.
+
 use std::env;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
