@@ -73,9 +73,9 @@ fn init_bash() {
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     assert!(s.contains("INSIDE_EMACS"));
-    assert!(s.contains(r#"bind '"\ep": "\C-u jmp\C-m"'"#));
-    assert!(s.contains(r#"bind '"\eP": "\C-u sjmp_kids\C-m"'"#));
-    assert!(s.contains(r#"bind '"\ex": "\C-u sjmp_actions\C-m"'"#));
+    assert!(s.contains(r#"bind '"\ep": "\C-ujmp\C-m"'"#));
+    assert!(s.contains(r#"bind '"\eP": "\C-usjmp_kids\C-m"'"#));
+    assert!(s.contains(r#"bind '"\ex": "\C-usjmp_actions\C-m"'"#));
     assert!(s.contains("action list"));
     assert!(!s.contains("verb list"));
     assert!(s.contains("pos(1)+accept"));
@@ -112,8 +112,8 @@ fn init_bash_binds_favorite_meta_keys() {
         .unwrap();
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    assert!(s.contains(r#"bind '"\ew": "\C-u jmp w\C-m"'"#));
-    assert!(s.contains(r#"bind '"\es": "\C-u jmp s\C-m"'"#));
+    assert!(s.contains(r#"bind '"\ew": "\C-ujmp w\C-m"'"#));
+    assert!(s.contains(r#"bind '"\es": "\C-ujmp s\C-m"'"#));
     assert!(!s.contains(r#"jmp p"#));
     let _ = fs::remove_dir_all(&tmp);
 }

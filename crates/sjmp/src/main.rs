@@ -302,7 +302,8 @@ fn favorite_meta_binds(cfg: &Config) -> String {
             continue;
         }
         // Macro (not bind -x): cd inside bind -x is reverted when the widget ends.
-        out.push_str(&format!("  bind '\"\\e{c}\": \"\\C-u jmp {k}\\C-m\"'\n"));
+        // No space after \C-u: that space is typed onto the line before jmp.
+        out.push_str(&format!("  bind '\"\\e{c}\": \"\\C-ujmp {k}\\C-m\"'\n"));
     }
     out
 }
@@ -366,9 +367,9 @@ sjmp_actions() {
 }
 if [ -n "${BASH_VERSION:-}" ]; then
   # Readline macros, not bind -x: bash reverts cd after a bind -x widget.
-  bind '"\ep": "\C-u jmp\C-m"'
-  bind '"\eP": "\C-u sjmp_kids\C-m"'
-  bind '"\ex": "\C-u sjmp_actions\C-m"'
+  bind '"\ep": "\C-ujmp\C-m"'
+  bind '"\eP": "\C-usjmp_kids\C-m"'
+  bind '"\ex": "\C-usjmp_actions\C-m"'
 "#
             .to_string(),
     );
@@ -386,9 +387,9 @@ mod tests {
     fn hook_skips_emacs_and_binds_meta() {
         let h = bash_hook(&Config::default());
         assert!(h.contains("INSIDE_EMACS"));
-        assert!(h.contains(r#"bind '"\ep": "\C-u jmp\C-m"'"#));
-        assert!(h.contains(r#"bind '"\eP": "\C-u sjmp_kids\C-m"'"#));
-        assert!(h.contains(r#"bind '"\ex": "\C-u sjmp_actions\C-m"'"#));
+        assert!(h.contains(r#"bind '"\ep": "\C-ujmp\C-m"'"#));
+        assert!(h.contains(r#"bind '"\eP": "\C-usjmp_kids\C-m"'"#));
+        assert!(h.contains(r#"bind '"\ex": "\C-usjmp_actions\C-m"'"#));
         assert!(h.contains("jmp()"));
         assert!(!h.contains("cdw()"));
         assert!(h.contains("action list"));
@@ -422,9 +423,9 @@ mod tests {
             ..Config::default()
         };
         let h = bash_hook(&cfg);
-        assert!(h.contains(r#"bind '"\ew": "\C-u jmp w\C-m"'"#));
-        assert!(h.contains(r#"bind '"\es": "\C-u jmp s\C-m"'"#));
+        assert!(h.contains(r#"bind '"\ew": "\C-ujmp w\C-m"'"#));
+        assert!(h.contains(r#"bind '"\es": "\C-ujmp s\C-m"'"#));
         assert!(!h.contains(r#"jmp p"#));
-        assert!(h.contains(r#"bind '"\ep": "\C-u jmp\C-m"'"#));
+        assert!(h.contains(r#"bind '"\ep": "\C-ujmp\C-m"'"#));
     }
 }
