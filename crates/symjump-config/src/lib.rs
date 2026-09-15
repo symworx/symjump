@@ -1,3 +1,6 @@
+// Copyright (c) 2026 PalEm Dynamics LLC
+// Licensed under the Apache License, Version 2.0.
+
 //! Config file types and I/O for symjump.
 //!
 //! Parser is a closed subset of TOML (no serde): root keys, `[keys]`,
@@ -110,7 +113,10 @@ impl Config {
             }
         }
         let home = std::env::var("HOME").map_err(|_| ConfigError::NoHome)?;
-        Ok(PathBuf::from(home).join(".config").join("symjump").join("favorites.toml"))
+        Ok(PathBuf::from(home)
+            .join(".config")
+            .join("symjump")
+            .join("favorites.toml"))
     }
 
     pub fn load_path(path: &Path) -> Result<Self, ConfigError> {
@@ -221,17 +227,17 @@ fn parse_header(line: &str, line_no: usize) -> Result<Section, ConfigError> {
 }
 
 fn parse_kv(line: &str, line_no: usize) -> Result<(String, Value), ConfigError> {
-    let eq = line.find('=').ok_or_else(|| {
-        ConfigError::Parse(format!("line {line_no}: expected key = value"))
-    })?;
+    let eq = line
+        .find('=')
+        .ok_or_else(|| ConfigError::Parse(format!("line {line_no}: expected key = value")))?;
     let key = line[..eq].trim().to_string();
     let raw = line[eq + 1..].trim();
     let val = if raw.starts_with('"') {
         Value::Str(unquote(raw, line_no)?)
     } else {
-        let n: u32 = raw.parse().map_err(|_| {
-            ConfigError::Parse(format!("line {line_no}: bad value `{raw}`"))
-        })?;
+        let n: u32 = raw
+            .parse()
+            .map_err(|_| ConfigError::Parse(format!("line {line_no}: bad value `{raw}`")))?;
         Value::Int(n)
     };
     Ok((key, val))
@@ -239,9 +245,13 @@ fn parse_kv(line: &str, line_no: usize) -> Result<(String, Value), ConfigError> 
 
 fn unquote(s: &str, line_no: usize) -> Result<String, ConfigError> {
     if !s.starts_with('"') || !s.ends_with('"') || s.len() < 2 {
-        return Err(ConfigError::Parse(format!("line {line_no}: expected quoted string")));
+        return Err(ConfigError::Parse(format!(
+            "line {line_no}: expected quoted string"
+        )));
     }
-    Ok(s[1..s.len() - 1].replace("\\\"", "\"").replace("\\\\", "\\"))
+    Ok(s[1..s.len() - 1]
+        .replace("\\\"", "\"")
+        .replace("\\\\", "\\"))
 }
 
 enum Value {
@@ -411,7 +421,13 @@ cmd = "grok"
 
     #[test]
     fn comments_and_unknown_header_fail() {
-        assert_eq!(Config::parse_str("root = \"~/x\" # c\n").unwrap().root.as_deref(), Some("~/x"));
+        assert_eq!(
+            Config::parse_str("root = \"~/x\" # c\n")
+                .unwrap()
+                .root
+                .as_deref(),
+            Some("~/x")
+        );
         assert!(Config::parse_str("[nope]\n").is_err());
         assert!(Config::parse_str("[[verbs.agent]]\n").is_err());
     }

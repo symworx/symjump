@@ -16,7 +16,7 @@
 - [x] bash hook + `jmp`
 - [x] Bind `M-p` and **`M-x`** only if `INSIDE_EMACS` unset
 - [x] fzf picker (basic)
-- [x] `sjmp exec` / `sjmp action` / `sjmp toolbox`
+- [x] `sjmp exec` / `sjmp action` / `action add` / `action rm` / `sjmp toolbox`
 
 ## 2. Hook completeness
 

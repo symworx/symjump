@@ -1,9 +1,12 @@
+// Copyright (c) 2026 PalEm Dynamics LLC
+// Licensed under the Apache License, Version 2.0.
+
 //! Pure operations over a [`symjump_config::Config`].
 //! The CLI prints paths; the shell hook is responsible for `cd`.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use symjump_config::{expand_user, AgentAction, Config, Favorite, ToolboxAction};
+use symjump_config::{AgentAction, Config, Favorite, ToolboxAction, expand_user};
 
 /// GNU readline emacs-mode Meta letters we never steal for favorite jumps.
 const READLINE_META_RESERVED: &[(char, &str)] = &[
@@ -21,6 +24,10 @@ pub enum CoreError {
     UnknownAgent(String),
     #[error("no toolbox action matching `{0}`")]
     UnknownToolbox(String),
+    #[error("no action matching `{0}`")]
+    UnknownAction(String),
+    #[error("ambiguous action `{0}` (agent and toolbox); pass agent or toolbox")]
+    AmbiguousAction(String),
     #[error("path is empty")]
     EmptyPath,
     #[error("key `{0}` is reserved ({1})")]
@@ -76,10 +83,60 @@ pub fn list_lines(cfg: &Config, home: &Path) -> Vec<String> {
             )
         })
         .collect();
-    let kw = rows.iter().map(|(k, _, _)| k.chars().count()).max().unwrap_or(0);
-    let lw = rows.iter().map(|(_, l, _)| l.chars().count()).max().unwrap_or(0);
+    let kw = rows
+        .iter()
+        .map(|(k, _, _)| k.chars().count())
+        .max()
+        .unwrap_or(0);
+    let lw = rows
+        .iter()
+        .map(|(_, l, _)| l.chars().count())
+        .max()
+        .unwrap_or(0);
     rows.into_iter()
         .map(|(k, l, p)| format!("{k:<kw$}  {l:<lw$}  {p}"))
+        .collect()
+}
+
+/// `kind  key  label  payload` with leading columns padded like [`list_lines`].
+/// Payload (cmd or toolbox name) is last so it may contain spaces.
+pub fn action_list_lines(cfg: &Config) -> Vec<String> {
+    let mut rows: Vec<(String, String, String, String)> = Vec::new();
+    for a in &cfg.actions.agent {
+        rows.push((
+            "agent".into(),
+            a.keys.as_deref().unwrap_or("-").to_string(),
+            a.label.clone(),
+            a.cmd.clone(),
+        ));
+    }
+    for t in &cfg.actions.toolbox {
+        rows.push((
+            "toolbox".into(),
+            t.keys.as_deref().unwrap_or("-").to_string(),
+            t.label.clone(),
+            t.name.clone(),
+        ));
+    }
+    let kind_w = rows
+        .iter()
+        .map(|(k, _, _, _)| k.chars().count())
+        .max()
+        .unwrap_or(0);
+    let key_w = rows
+        .iter()
+        .map(|(_, k, _, _)| k.chars().count())
+        .max()
+        .unwrap_or(0);
+    let label_w = rows
+        .iter()
+        .map(|(_, _, l, _)| l.chars().count())
+        .max()
+        .unwrap_or(0);
+    rows.into_iter()
+        .map(|(kind, key, label, payload)| {
+            format!("{kind:<kind_w$}  {key:<key_w$}  {label:<label_w$}  {payload}")
+        })
         .collect()
 }
 
@@ -122,7 +179,11 @@ fn reserved_reason(cfg: &Config, c: char) -> Option<String> {
 
 /// Single-letter keys become `M-<letter>`. Reject sjmp chords, readline
 /// motion/kill letters, and keys already used by another favorite.
-pub fn check_favorite_key(cfg: &Config, key: &str, except_label: Option<&str>) -> Result<(), CoreError> {
+pub fn check_favorite_key(
+    cfg: &Config,
+    key: &str,
+    except_label: Option<&str>,
+) -> Result<(), CoreError> {
     let k = key.trim();
     if k.is_empty() {
         return Ok(());
@@ -142,7 +203,12 @@ pub fn check_favorite_key(cfg: &Config, key: &str, except_label: Option<&str>) -
     Ok(())
 }
 
-pub fn pin(cfg: &mut Config, label: String, path: String, keys: Option<String>) -> Result<(), CoreError> {
+pub fn pin(
+    cfg: &mut Config,
+    label: String,
+    path: String,
+    keys: Option<String>,
+) -> Result<(), CoreError> {
     if let Some(k) = keys.as_deref() {
         check_favorite_key(cfg, k, Some(&label))?;
     }
@@ -182,7 +248,11 @@ fn action_key_taken<'a>(cfg: &'a Config, key: &str, except_label: Option<&str>) 
         })
 }
 
-pub fn check_action_key(cfg: &Config, key: &str, except_label: Option<&str>) -> Result<(), CoreError> {
+pub fn check_action_key(
+    cfg: &Config,
+    key: &str,
+    except_label: Option<&str>,
+) -> Result<(), CoreError> {
     let k = key.trim();
     if k.is_empty() {
         return Ok(());
@@ -245,8 +315,85 @@ pub fn add_toolbox(
         }
         return Ok(());
     }
-    cfg.actions.toolbox.push(ToolboxAction { label, name, keys });
+    cfg.actions
+        .toolbox
+        .push(ToolboxAction { label, name, keys });
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionKind {
+    Agent,
+    Toolbox,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RemovedAction {
+    Agent(AgentAction),
+    Toolbox(ToolboxAction),
+}
+
+impl RemovedAction {
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::Agent(_) => "agent",
+            Self::Toolbox(_) => "toolbox",
+        }
+    }
+
+    pub fn label(&self) -> &str {
+        match self {
+            Self::Agent(a) => &a.label,
+            Self::Toolbox(t) => &t.label,
+        }
+    }
+}
+
+fn action_matches_query(label: &str, keys: Option<&str>, query: &str) -> bool {
+    label.eq_ignore_ascii_case(query) || keys == Some(query)
+}
+
+/// Remove an agent or toolbox action by label or key.
+/// Pass `kind` when the same query hits both lists.
+pub fn remove_action(
+    cfg: &mut Config,
+    query: &str,
+    kind: Option<ActionKind>,
+) -> Result<RemovedAction, CoreError> {
+    let q = query.trim();
+    if q.is_empty() {
+        return Err(match kind {
+            Some(ActionKind::Agent) => CoreError::UnknownAgent(query.into()),
+            Some(ActionKind::Toolbox) => CoreError::UnknownToolbox(query.into()),
+            None => CoreError::UnknownAction(query.into()),
+        });
+    }
+    let agent_idx = cfg
+        .actions
+        .agent
+        .iter()
+        .position(|a| action_matches_query(&a.label, a.keys.as_deref(), q));
+    let toolbox_idx = cfg
+        .actions
+        .toolbox
+        .iter()
+        .position(|t| action_matches_query(&t.label, t.keys.as_deref(), q));
+    match kind {
+        Some(ActionKind::Agent) => {
+            let idx = agent_idx.ok_or_else(|| CoreError::UnknownAgent(q.into()))?;
+            Ok(RemovedAction::Agent(cfg.actions.agent.remove(idx)))
+        }
+        Some(ActionKind::Toolbox) => {
+            let idx = toolbox_idx.ok_or_else(|| CoreError::UnknownToolbox(q.into()))?;
+            Ok(RemovedAction::Toolbox(cfg.actions.toolbox.remove(idx)))
+        }
+        None => match (agent_idx, toolbox_idx) {
+            (Some(_), Some(_)) => Err(CoreError::AmbiguousAction(q.into())),
+            (Some(i), None) => Ok(RemovedAction::Agent(cfg.actions.agent.remove(i))),
+            (None, Some(i)) => Ok(RemovedAction::Toolbox(cfg.actions.toolbox.remove(i))),
+            (None, None) => Err(CoreError::UnknownAction(q.into())),
+        },
+    }
 }
 
 pub fn unpin(cfg: &mut Config, query: &str) -> Result<Favorite, CoreError> {
@@ -267,7 +414,14 @@ pub fn is_git_root(dir: &Path) -> bool {
 }
 
 pub fn kids(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
-    const SKIP: &[&str] = &["target", "node_modules", ".git", ".venv", "venv", "__pycache__"];
+    const SKIP: &[&str] = &[
+        "target",
+        "node_modules",
+        ".git",
+        ".venv",
+        "venv",
+        "__pycache__",
+    ];
     let mut out = Vec::new();
     if !dir.is_dir() {
         return Ok(out);
@@ -372,7 +526,10 @@ mod tests {
         let r = resolve_favorite(&c, "s", home).unwrap();
         assert_eq!(r.label, "symworx");
         assert_eq!(r.path, PathBuf::from("/home/user/src/symworx"));
-        assert!(matches!(resolve_favorite(&c, "nope", home), Err(CoreError::UnknownFavorite(_))));
+        assert!(matches!(
+            resolve_favorite(&c, "nope", home),
+            Err(CoreError::UnknownFavorite(_))
+        ));
     }
 
     #[test]
@@ -385,6 +542,17 @@ mod tests {
     }
 
     #[test]
+    fn action_list_columns_align() {
+        let lines = action_list_lines(&cfg());
+        assert_eq!(lines[0], "agent    g  grok-build  grok");
+        assert_eq!(lines[1], "agent    c  codex       codex -C {path}");
+        assert_eq!(lines[2], "toolbox  p  python      dev-python");
+        let col = lines[0].len() - "grok".len();
+        assert_eq!(&lines[1][col..], "codex -C {path}");
+        assert_eq!(&lines[2][col..], "dev-python");
+    }
+
+    #[test]
     fn pin_updates_or_appends() {
         let mut c = cfg();
         pin(&mut c, "symworx".into(), "~/new".into(), None).unwrap();
@@ -394,7 +562,10 @@ mod tests {
         let gone = unpin(&mut c, "s").unwrap();
         assert_eq!(gone.label, "symworx");
         assert_eq!(c.favorites.len(), 2);
-        assert!(matches!(unpin(&mut c, "nope"), Err(CoreError::UnknownFavorite(_))));
+        assert!(matches!(
+            unpin(&mut c, "nope"),
+            Err(CoreError::UnknownFavorite(_))
+        ));
     }
 
     #[test]
@@ -416,7 +587,13 @@ mod tests {
             pin(&mut c, "lab".into(), "~/lab".into(), Some("s".into())),
             Err(CoreError::KeyTaken(k, lab)) if k == "s" && lab == "symworx"
         ));
-        pin(&mut c, "symworx".into(), "~/src/symworx".into(), Some("s".into())).unwrap();
+        pin(
+            &mut c,
+            "symworx".into(),
+            "~/src/symworx".into(),
+            Some("s".into()),
+        )
+        .unwrap();
     }
 
     #[test]
@@ -430,20 +607,79 @@ mod tests {
         ));
         add_toolbox(&mut c, "rust".into(), "dev-rust".into(), Some("r".into())).unwrap();
         assert_eq!(c.actions.toolbox.len(), 2);
-        assert!(matches!(add_agent(&mut c, "x".into(), " ".into(), None), Err(CoreError::EmptyCmd)));
+        assert!(matches!(
+            add_agent(&mut c, "x".into(), " ".into(), None),
+            Err(CoreError::EmptyCmd)
+        ));
+    }
+
+    #[test]
+    fn remove_action_by_label_key_and_kind() {
+        let mut c = cfg();
+        let gone = remove_action(&mut c, "g", None).unwrap();
+        assert_eq!(gone.kind(), "agent");
+        assert_eq!(gone.label(), "grok-build");
+        assert_eq!(c.actions.agent.len(), 1);
+        let tb = remove_action(&mut c, "python", None).unwrap();
+        assert_eq!(
+            tb,
+            RemovedAction::Toolbox(ToolboxAction {
+                label: "python".into(),
+                name: "dev-python".into(),
+                keys: Some("p".into()),
+            })
+        );
+        assert!(c.actions.toolbox.is_empty());
+        assert!(matches!(
+            remove_action(&mut c, "nope", None),
+            Err(CoreError::UnknownAction(q)) if q == "nope"
+        ));
+
+        add_agent(&mut c, "python".into(), "echo".into(), Some("a".into())).unwrap();
+        add_toolbox(
+            &mut c,
+            "python".into(),
+            "dev-python".into(),
+            Some("t".into()),
+        )
+        .unwrap();
+        assert!(matches!(
+            remove_action(&mut c, "python", None),
+            Err(CoreError::AmbiguousAction(q)) if q == "python"
+        ));
+        let agent = remove_action(&mut c, "python", Some(ActionKind::Agent)).unwrap();
+        assert_eq!(agent.kind(), "agent");
+        let toolbox = remove_action(&mut c, "t", Some(ActionKind::Toolbox)).unwrap();
+        assert_eq!(toolbox.label(), "python");
+        assert!(matches!(
+            remove_action(&mut c, "python", Some(ActionKind::Agent)),
+            Err(CoreError::UnknownAgent(_))
+        ));
     }
 
     #[test]
     fn agent_and_toolbox_lookup() {
         let c = cfg();
         assert_eq!(find_agent(&c, "g").unwrap().label, "grok-build");
-        assert_eq!(toolbox_enter_cmd(find_toolbox(&c, "p").unwrap()), "toolbox enter dev-python");
-        assert_eq!(render_agent_cmd(find_agent(&c, "c").unwrap(), Path::new("/r")), "codex -C /r");
+        assert_eq!(
+            toolbox_enter_cmd(find_toolbox(&c, "p").unwrap()),
+            "toolbox enter dev-python"
+        );
+        assert_eq!(
+            render_agent_cmd(find_agent(&c, "c").unwrap(), Path::new("/r")),
+            "codex -C /r"
+        );
     }
 
     #[test]
     fn exec_line_cd_or_substitute() {
-        assert_eq!(exec_line("grok", Path::new("/proj")).unwrap(), "cd /proj && grok");
-        assert_eq!(exec_line("codex -C {path}", Path::new("/proj")).unwrap(), "codex -C /proj");
+        assert_eq!(
+            exec_line("grok", Path::new("/proj")).unwrap(),
+            "cd /proj && grok"
+        );
+        assert_eq!(
+            exec_line("codex -C {path}", Path::new("/proj")).unwrap(),
+            "codex -C /proj"
+        );
     }
 }
