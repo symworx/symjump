@@ -6,10 +6,11 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use symjump_config::{expand_user, Config};
+use symjump_config::{Config, expand_user};
 use symjump_core::{
-    add_agent, add_toolbox, exec_line, find_agent, find_toolbox, is_git_root, kids, list_lines, pin,
-    render_agent_cmd, reserved_meta_letters, resolve_favorite, toolbox_enter_cmd, unpin,
+    ActionKind, action_list_lines, add_agent, add_toolbox, exec_line, find_agent, find_toolbox,
+    is_git_root, kids, list_lines, pin, remove_action, render_agent_cmd, reserved_meta_letters,
+    resolve_favorite, toolbox_enter_cmd, unpin,
 };
 
 fn main() -> ExitCode {
@@ -34,7 +35,9 @@ fn take_config(args: &mut Vec<String>) -> Option<PathBuf> {
 
 fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let cfg_flag = take_config(&mut args);
-    let home = env::var("HOME").map(PathBuf::from).or_else(|_| env::current_dir())?;
+    let home = env::var("HOME")
+        .map(PathBuf::from)
+        .or_else(|_| env::current_dir())?;
     let explicit_config = cfg_flag.is_some();
     let cfg_path = match cfg_flag {
         Some(p) => p,
@@ -46,7 +49,14 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     }
     let cmd = args.first().map(String::as_str).unwrap_or("help");
     match cmd {
-        "help" | "-h" | "--help" => print_help(),
+        "help" | "-h" | "--help" => match args.get(1).map(String::as_str) {
+            None | Some("-h") | Some("--help") | Some("help") => print_help(),
+            Some("pin") => print_pin_help(),
+            Some("action") | Some("actions") => print_action_help(),
+            Some(other) => {
+                return Err(format!("unknown help topic: {other} (try pin or action)").into());
+            }
+        },
         "list" => {
             let cfg = load_or_empty(&cfg_path)?;
             for line in list_lines(&cfg, &home) {
@@ -60,48 +70,52 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", r.path.display());
         }
         "pin" => {
-            let mut cfg = load_or_empty(&cfg_path)?;
-            let mut path: Option<PathBuf> = None;
-            let mut label: Option<String> = None;
-            let mut keys: Option<String> = None;
-            let mut current = false;
-            let mut i = 1;
-            while i < args.len() {
-                match args[i].as_str() {
-                    "--label" => {
-                        i += 1;
-                        label = args.get(i).cloned();
-                    }
-                    "--keys" => {
-                        i += 1;
-                        keys = args.get(i).cloned();
-                    }
-                    "--current" => current = true,
-                    s if !s.starts_with('-') => path = Some(PathBuf::from(s)),
-                    other => return Err(format!("unknown pin flag: {other}").into()),
-                }
-                i += 1;
-            }
-            if current && path.is_some() {
-                return Err("pin: --current cannot be combined with a path".into());
-            }
-            let raw = match path {
-                Some(p) => p,
-                None => env::current_dir()?,
-            };
-            let abs = if raw.is_absolute() {
-                raw
+            if wants_help(&args, 1) {
+                print_pin_help();
             } else {
-                env::current_dir()?.join(raw)
-            };
-            let label = label.unwrap_or_else(|| {
-                abs.file_name()
-                    .map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| "pin".into())
-            });
-            pin(&mut cfg, label, abs.to_string_lossy().into_owned(), keys)?;
-            cfg.save_path(&cfg_path)?;
-            println!("{}", abs.display());
+                let mut cfg = load_or_empty(&cfg_path)?;
+                let mut path: Option<PathBuf> = None;
+                let mut label: Option<String> = None;
+                let mut keys: Option<String> = None;
+                let mut current = false;
+                let mut i = 1;
+                while i < args.len() {
+                    match args[i].as_str() {
+                        "--label" => {
+                            i += 1;
+                            label = args.get(i).cloned();
+                        }
+                        "--keys" => {
+                            i += 1;
+                            keys = args.get(i).cloned();
+                        }
+                        "--current" => current = true,
+                        s if !s.starts_with('-') => path = Some(PathBuf::from(s)),
+                        other => return Err(format!("unknown pin flag: {other}").into()),
+                    }
+                    i += 1;
+                }
+                if current && path.is_some() {
+                    return Err("pin: --current cannot be combined with a path".into());
+                }
+                let raw = match path {
+                    Some(p) => p,
+                    None => env::current_dir()?,
+                };
+                let abs = if raw.is_absolute() {
+                    raw
+                } else {
+                    env::current_dir()?.join(raw)
+                };
+                let label = label.unwrap_or_else(|| {
+                    abs.file_name()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| "pin".into())
+                });
+                pin(&mut cfg, label, abs.to_string_lossy().into_owned(), keys)?;
+                cfg.save_path(&cfg_path)?;
+                println!("{}", abs.display());
+            }
         }
         "unpin" => {
             let q = args.get(1).ok_or("usage: sjmp unpin <label|key>")?;
@@ -116,7 +130,10 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                 None => env::current_dir()?,
             };
             if is_git_root(&dir) {
-                eprintln!("sjmp: {} looks like a git project; listing kids anyway", dir.display());
+                eprintln!(
+                    "sjmp: {} looks like a git project; listing kids anyway",
+                    dir.display()
+                );
             }
             for p in kids(&dir)? {
                 println!("{}", p.display());
@@ -139,60 +156,66 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             _ => return Err("usage: sjmp init [bash]".into()),
         },
         "action" | "actions" => {
-            match args.get(1).map(String::as_str) {
-                Some("list") => {
-                    let cfg = load_or_empty(&cfg_path)?;
-                    for a in &cfg.actions.agent {
-                        println!("agent\t{}\t{}\t{}", a.keys.as_deref().unwrap_or("-"), a.label, a.cmd);
+            if args.get(1).is_none() || wants_help(&args, 1) {
+                print_action_help();
+            } else {
+                match args.get(1).map(String::as_str) {
+                    Some("list") => {
+                        let cfg = load_or_empty(&cfg_path)?;
+                        for line in action_list_lines(&cfg) {
+                            println!("{line}");
+                        }
                     }
-                    for t in &cfg.actions.toolbox {
-                        println!("toolbox\t{}\t{}\t{}", t.keys.as_deref().unwrap_or("-"), t.label, t.name);
+                    Some("agent") => {
+                        let cfg = load_or_empty(&cfg_path)?;
+                        let query = args
+                            .get(2)
+                            .ok_or("usage: sjmp action agent <action> <fav>")?;
+                        let target = args
+                            .get(3)
+                            .ok_or("usage: sjmp action agent <action> <fav>")?;
+                        let agent = find_agent(&cfg, query)?;
+                        let r = resolve_favorite(&cfg, target, &home)?;
+                        println!("{}", render_agent_cmd(agent, &r.path));
+                        if !agent.cmd.contains("{path}") {
+                            eprintln!("{}", r.path.display());
+                        }
                     }
-                }
-                Some("agent") => {
-                    let cfg = load_or_empty(&cfg_path)?;
-                    let query = args.get(2).ok_or("usage: sjmp action agent <action> <fav>")?;
-                    let target = args.get(3).ok_or("usage: sjmp action agent <action> <fav>")?;
-                    let agent = find_agent(&cfg, query)?;
-                    let r = resolve_favorite(&cfg, target, &home)?;
-                    println!("{}", render_agent_cmd(agent, &r.path));
-                    if !agent.cmd.contains("{path}") {
-                        eprintln!("{}", r.path.display());
-                    }
-                }
-                Some("add") => {
-                    let kind = args.get(2).map(String::as_str).ok_or(
+                    Some("add") => {
+                        let kind = args.get(2).map(String::as_str).ok_or(
                         "usage: sjmp action add agent --cmd CMD [--label N] [--keys K]\n       sjmp action add toolbox --name NAME [--label N] [--keys K]",
                     )?;
-                    let mut label: Option<String> = None;
-                    let mut keys: Option<String> = None;
-                    let mut cmd: Option<String> = None;
-                    let mut name: Option<String> = None;
-                    let mut i = 3;
-                    while i < args.len() {
-                        match args[i].as_str() {
-                            "--label" => {
-                                i += 1;
-                                label = args.get(i).cloned();
+                        let mut label: Option<String> = None;
+                        let mut keys: Option<String> = None;
+                        let mut cmd: Option<String> = None;
+                        let mut name: Option<String> = None;
+                        let mut i = 3;
+                        while i < args.len() {
+                            match args[i].as_str() {
+                                "--label" => {
+                                    i += 1;
+                                    label = args.get(i).cloned();
+                                }
+                                "--keys" => {
+                                    i += 1;
+                                    keys = args.get(i).cloned();
+                                }
+                                "--cmd" => {
+                                    i += 1;
+                                    cmd = args.get(i).cloned();
+                                }
+                                "--name" => {
+                                    i += 1;
+                                    name = args.get(i).cloned();
+                                }
+                                other => {
+                                    return Err(format!("unknown action add flag: {other}").into());
+                                }
                             }
-                            "--keys" => {
-                                i += 1;
-                                keys = args.get(i).cloned();
-                            }
-                            "--cmd" => {
-                                i += 1;
-                                cmd = args.get(i).cloned();
-                            }
-                            "--name" => {
-                                i += 1;
-                                name = args.get(i).cloned();
-                            }
-                            other => return Err(format!("unknown action add flag: {other}").into()),
+                            i += 1;
                         }
-                        i += 1;
-                    }
-                    let mut cfg = load_or_empty(&cfg_path)?;
-                    match kind {
+                        let mut cfg = load_or_empty(&cfg_path)?;
+                        match kind {
                         "agent" => {
                             let cmd = cmd.ok_or("usage: sjmp action add agent --cmd CMD [--label N] [--keys K]")?;
                             let label = label.unwrap_or_else(|| {
@@ -221,12 +244,25 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
                             )
                         }
                     }
-                }
-                _ => {
-                    return Err(
-                        "usage: sjmp action list | action add agent|toolbox | action agent <action> <fav>"
-                            .into(),
-                    )
+                    }
+                    Some("rm") | Some("remove") => {
+                        let rest: Vec<&str> = args.iter().skip(2).map(String::as_str).collect();
+                        let (kind, q) = match rest.as_slice() {
+                            ["agent", q] => (Some(ActionKind::Agent), *q),
+                            ["toolbox", q] => (Some(ActionKind::Toolbox), *q),
+                            [q] => (None, *q),
+                            _ => {
+                                return Err(
+                                    "usage: sjmp action rm [agent|toolbox] <label|key>".into()
+                                );
+                            }
+                        };
+                        let mut cfg = load_or_empty(&cfg_path)?;
+                        let gone = remove_action(&mut cfg, q, kind)?;
+                        cfg.save_path(&cfg_path)?;
+                        println!("{}\t{}", gone.kind(), gone.label());
+                    }
+                    _ => return Err("unknown action command (try sjmp action --help)".into()),
                 }
             }
         }
@@ -257,7 +293,12 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
             match args.get(1).map(String::as_str) {
                 Some("list") => {
                     for t in &cfg.actions.toolbox {
-                        println!("{}\t{}\t{}", t.keys.as_deref().unwrap_or("-"), t.label, t.name);
+                        println!(
+                            "{}\t{}\t{}",
+                            t.keys.as_deref().unwrap_or("-"),
+                            t.label,
+                            t.name
+                        );
                     }
                 }
                 Some("enter") => {
@@ -273,9 +314,104 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn wants_help(args: &[String], start: usize) -> bool {
+    match args.get(start).map(String::as_str) {
+        Some("-h" | "--help" | "help") => true,
+        _ => {
+            let mut i = start;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "-h" | "--help" => return true,
+                    "--label" | "--keys" | "--cmd" | "--name" => i += 1,
+                    _ => {}
+                }
+                i += 1;
+            }
+            false
+        }
+    }
+}
+
 fn print_help() {
-    println!(
-        "sjmp — symjump CLI\n  list | jump <q> | pin [--current|path] [--label N] [--keys K] | unpin <q>\n  kids [path] | init [bash]\n  action list | action add agent --cmd C [--label N] [--keys K]\n  action add toolbox --name N [--label N] [--keys K]\n  action agent <action> <fav>\n  exec <fav|path> --cmd <cmd>\n  toolbox list | toolbox enter <q>\n  --config PATH"
+    print!(
+        "\
+sjmp — portable favorites + action launcher
+
+Usage:
+  sjmp <command> [args]
+  sjmp help [pin|action]
+
+Commands:
+  list                      list favorites
+  jump <label|key>          print favorite path
+  pin                       pin a directory
+  unpin <label|key>         remove a favorite
+  kids [path]               list child directories
+  init [bash]               print config path, or bash hook
+  action                    list, add, run, or remove actions
+  exec <fav|path> --cmd C   print an exec line
+  toolbox list              list toolbox actions
+  toolbox enter <q>         print toolbox enter command
+
+Options:
+  --config PATH             config file
+  -h, --help                this screen
+
+See also:
+  sjmp pin --help
+  sjmp action --help
+"
+    );
+}
+
+fn print_pin_help() {
+    print!(
+        "\
+sjmp pin — pin a favorite directory
+
+Usage:
+  sjmp pin [--current] [--label NAME] [--keys LETTER]
+  sjmp pin <path> [--label NAME] [--keys LETTER]
+  sjmp unpin <label|key>
+
+Flags:
+  --current        pin $PWD (also the default when no path is given)
+  --label NAME     display name (default: last path component)
+  --keys LETTER    Meta jump key (M-LETTER)
+  --current cannot be combined with a path
+
+  --keys refuses: p/P/x (sjmp chords), b/f/d/y (readline), and duplicates
+
+Examples:
+  sjmp pin --current --label src --keys r
+  sjmp pin ~/worx --label worx --keys w
+  sjmp unpin w
+"
+    );
+}
+
+fn print_action_help() {
+    print!(
+        "\
+sjmp action — agent and toolbox actions (M-x)
+
+Usage:
+  sjmp action list
+  sjmp action add agent --cmd CMD [--label NAME] [--keys LETTER]
+  sjmp action add toolbox --name NAME [--label NAME] [--keys LETTER]
+  sjmp action rm [agent|toolbox] <label|key>
+  sjmp action agent <action> <favorite>
+
+  rm also accepts `remove`. Pass agent or toolbox when the query matches both.
+
+Examples:
+  sjmp action add agent --cmd grok --keys g --label grok-build
+  sjmp action add toolbox --name dev-python --keys p --label python
+  sjmp action list
+  sjmp action agent g s
+  sjmp action rm g
+  sjmp action rm agent python
+"
     );
 }
 
@@ -298,7 +434,9 @@ fn favorite_meta_binds(cfg: &Config) -> String {
     let mut seen = reserved_meta_letters(cfg);
     let mut out = String::new();
     for fav in &cfg.favorites {
-        let Some(k) = fav.keys.as_deref() else { continue };
+        let Some(k) = fav.keys.as_deref() else {
+            continue;
+        };
         let mut chars = k.chars();
         let Some(c) = chars.next() else { continue };
         if chars.next().is_some() || !c.is_ascii_alphabetic() || !seen.insert(c) {
@@ -355,8 +493,8 @@ sjmp_actions() {
   local row kind payload sel
   row="$("$sjmp_bin" action list | sjmp_fzf 'action> ' 20%)" || return
   [ -z "$row" ] && return
-  kind=$(printf '%s\n' "$row" | awk -F'\t' '{print $1}')
-  payload=$(printf '%s\n' "$row" | awk -F'\t' '{print $4}')
+  kind=$(printf '%s\n' "$row" | awk '{print $1}')
+  payload=$(printf '%s\n' "$row" | awk '{for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : "\n")}')
   case "$kind" in
     toolbox)
       [ -n "$payload" ] && toolbox enter "$payload"
@@ -396,6 +534,8 @@ mod tests {
         assert!(h.contains("jmp()"));
         assert!(!h.contains("cdw()"));
         assert!(h.contains("action list"));
+        assert!(h.contains("for (i = 4; i <= NF; i++)"));
+        assert!(!h.contains("-F'\\t'"));
         assert!(!h.contains("verb list"));
         assert!(h.contains("pos(1)+accept"));
         assert!(h.contains(r#"unbind(1,2,3,4,5,6,7,8,9)"#));

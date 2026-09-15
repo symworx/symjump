@@ -151,7 +151,7 @@ Shipped on `feature/cli-build`:
 3. bash hook + `jmp`; skip entire hook when `INSIDE_EMACS`; first `sjmp` on the default path writes `~/.config/symjump/favorites.toml` if missing
 4. `M-p` places, `M-P` kids, `M-x` from `sjmp action list`
 5. Numbered picks `1`–`9` only while the fzf query is empty
-6. `sjmp action` / `action add` / `exec` / `toolbox`
+6. `sjmp action` / `action add` / `action rm` / `exec` / `toolbox`
 
 Next: optional `tmux new-window -c {path}` on `M-RET`.
 

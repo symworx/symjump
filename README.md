@@ -19,7 +19,8 @@ It sits *on top*: favorites you chose, plus destinations your bashrc should not 
 ## What it is (shipped)
 
 - Pinned favorites in `~/.config/symjump/favorites.toml`
-- CLI: `sjmp list` / `jump` / `pin` / `unpin` / `kids` / `action` / `exec` / `toolbox`
+- CLI: `sjmp list` / `jump` / `pin` / `unpin` / `kids` / `action` / `action rm` / `exec` / `toolbox`
+- Help: `sjmp --help`, `sjmp pin --help`, `sjmp action --help`
 - `eval "$(sjmp init bash)"` defines `jmp`, binds `M-p` (places), `M-P` (kids), and `M-x` (actions from config), and **skips the whole hook** when `$INSIDE_EMACS` is set
 - fzf picker: numbered picks `1`–`9` only while the query is empty
 
@@ -35,6 +36,13 @@ sjmp pin --current --label src --keys r
 sjmp action add agent --cmd grok --keys g --label grok-build
 sjmp action add toolbox --name dev-python --keys p --label python
 sjmp list
+```
+
+Remove an action by label or key (`agent` / `toolbox` if both match):
+
+```bash
+sjmp action rm grok-build
+sjmp action rm agent python
 ```
 
 `cargo install` only puts `sjmp` on `PATH` — Cargo has no post-install hook.
