@@ -1,112 +1,73 @@
 # symjump
 
-Cross-emulator directory favorites and jump list.
+Pinned places and a few actions for a real terminal. Binary: `sjmp`.
 
-**Binary:** `sjmp`  
-**Org:** [symworx](https://github.com/symworx) sibling 
+Not an emulator, not a project.el replacement, not your git/docker aliases.
+`eval "$(sjmp init bash)"` is the hook; it stays off when `$INSIDE_EMACS` is set.
 
-A launcher for *places* and *actions* (toolbox enter, agent exec), not a
-terminal emulator and not a replacement for git/docker aliases.
+## Why
 
-## Why this project
+I was screen-sharing with friends and colleagues, jumping between directories
+with aliases and shortcuts. I sent them my bashrc. It worked — after they
+rewrote paths and names for their machines. Not a huge tax, but enough to be
+annoying. I wanted a list that was not a private shell dialect.
 
-I was screen-sharing with friends and colleagues, jumping between directories with aliases and shortcuts. I sent them my bashrc. It worked — after they rewrote paths and names for their machines. Not a huge tax, but enough to be annoying. I started thinking about a list that was not a private shell dialect.
-
-After trying [Omarchy](https://omarchy.org), I had a clearer picture: zoxide + fzf + a terminal-agnostic hook travel; a pile of directory aliases do not. I wanted something more portable — pinned places and a few actions (toolbox) that install the same way on Kitty, foot, or a tmux pane.
-
-It sits *on top*: favorites you chose, plus destinations your bashrc should not have to encode.
-
-## What it is (shipped)
-
-- Pinned favorites in `~/.config/symjump/favorites.toml`
-- CLI: `sjmp list` / `jump` / `pin` / `unpin` / `kids` / `action` / `action rm` / `exec` / `toolbox`
-- Help: `sjmp --help`, `sjmp pin --help`, `sjmp action --help`
-- `eval "$(sjmp init bash)"` defines `jmp`, binds `M-p` (places), `M-P` (kids), and `M-x` (actions from config), and **skips the whole hook** when `$INSIDE_EMACS` is set
-- fzf picker: numbered picks `1`–`9` only while the query is empty
-
-Not wired yet: `M-RET` new window, zoxide, spawn backends. See [docs/ROADMAP.md](docs/ROADMAP.md).
+After [Omarchy](https://omarchy.org), the picture was clearer: zoxide + fzf + a
+terminal-agnostic hook travel; a pile of directory aliases do not. Pinned
+places and a few actions (toolbox, agent exec) should install the same way on
+Kitty, foot, or a tmux pane.
 
 ## Install
 
 ```bash
 cargo install --path crates/sjmp
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
-eval "$(sjmp init bash)"   # shell hook; skip when INSIDE_EMACS
+eval "$(sjmp init bash)"   # defines jmp; binds M-p / M-P / M-x
 sjmp pin --current --label src --keys r
 sjmp action add agent --cmd grok --keys g --label grok-build
 sjmp action add toolbox --name dev-python --keys p --label python
 sjmp list
 ```
 
-Remove an action by label or key (`agent` / `toolbox` if both match):
+`cargo install` only puts `sjmp` on `PATH`. The binary creates the config file
+on first run (default path only; `--config` is left alone) and will not
+overwrite an existing file. If `sjmp` is missing from `PATH`, the hook does
+nothing.
 
 ```bash
 sjmp action rm grok-build
-sjmp action rm agent python
+sjmp action rm agent python   # pass agent|toolbox when the query matches both
 ```
 
-`cargo install` only puts `sjmp` on `PATH` — Cargo has no post-install hook.
-The binary creates the config dir/file the first time you run it (default
-path only; `--config` is left alone). It will not overwrite an existing file.
-`sjmp init` prints the path; `sjmp init bash` prints the hook.
-
+`sjmp --help`, `sjmp pin --help`, and `sjmp action --help` cover the rest.
 A fuller sample is [examples/favorites.toml](examples/favorites.toml).
 
-If `sjmp` is missing from `PATH`, the hook does nothing.
+## Bindings
 
-## Bindings (Meta, not Control)
+Meta, not Control. Bound outside Emacs only. See [docs/DESIGN.md](docs/DESIGN.md).
 
-Intended chords ([docs/DESIGN.md](docs/DESIGN.md)). Bound outside Emacs only.
-
-| Chord | Where | Action |
-|---|---|---|
-| `M-p` | terminal / tmux only | favorites / places |
-| `M-P` | same | kids of `$PWD` |
-| `M-x` | same, never in Emacs | action palette (`sjmp action list`) |
-| `M-<key>` | same | jump favorite `keys` (`M-w`, `M-j`, …) |
-
-`pin --keys` rejects `p` / `P` / `x` (sjmp chords), `b` / `f` / `d` / `y` (readline), and letters already used by another favorite.
-| `M-RET` | inside a picker | new tmux window/tab (not bound yet) |
-
-See DESIGN for the full table and `[[actions.toolbox]]` / `[[actions.agent]]` config.
-
-## What it is not
-
-- Not a GPU terminal (see Kitty / foot / Alacritty / WezTerm)
-- Not a member of the `symworx` crate workspace (biosignal / load / dynamics)
-- Not a second Projectile — Emacs already switches projects; this hook stays off there
-- Does not replace git/docker/PATH setup in the user's shell kit
-- Replaces directory-jump helpers and destination-style aliases only
-
-## Names
-
-| Surface | Name |
+| Chord | Action |
 |---|---|
-| Repo / crate | `symjump` |
-| Binary | `sjmp` |
-| Shell function | `jmp` |
+| `M-p` | favorites / places |
+| `M-P` | kids of `$PWD` |
+| `M-x` | action palette (`sjmp action list`) |
+| `M-<key>` | jump the favorite with that `keys` letter |
+| `M-RET` | new tmux window/tab (not bound yet) |
 
-Avoided: SymTerm (reads as an emulator), SymKey (crypto), binary `sym` (taken).
+`pin --keys` refuses `p` / `P` / `x` (sjmp chords), `b` / `f` / `d` / `y`
+(readline), and letters already used by another favorite.
 
-## Branches
+The fzf picker accepts numbered picks `1`–`9` only while the query is empty.
 
-| Branch | Role |
-|---|---|
-| `main` | stable / empty-ish product line |
-| `develop` | integration |
-| `stage` | pre-release |
-| `feature/cli-build` | CLI spike + this docs pass |
-
-Feature PRs target **`develop`**, not `main`. Path: `develop` → `stage` → `main` (same idea as [symworx](https://github.com/symworx/symworx)).
+Not wired yet: `M-RET`, zoxide, spawn backends. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Docs
 
-- [docs/DESIGN.md](docs/DESIGN.md) — architecture, Meta bindings, toolbox actions, config, shell-kit split
+- [docs/DESIGN.md](docs/DESIGN.md) — architecture, chords, config
 - [docs/ROADMAP.md](docs/ROADMAP.md) — shipped vs next
-- [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute
-- [DEVELOPMENT.md](DEVELOPMENT.md) — build / branch / release notes
-- [AGENTS.md](AGENTS.md) — guidelines for agentic tools
+- [CONTRIBUTING.md](CONTRIBUTING.md) — PRs target `develop`
+- [DEVELOPMENT.md](DEVELOPMENT.md) — build and release path
 
 ## License
 
-Apache-2.0 intended (matches `Cargo.toml`). LICENSE file at public release.
+[Apache License 2.0](LICENSE).

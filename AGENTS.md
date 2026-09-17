@@ -2,13 +2,11 @@
 
 Instructions for agentic tools in **this** repository.
 
-This is **not** the SymWorx science workspace. Do not apply `symworx-tui` / RQA / `symworx-io` rules here. The human contributor owns every change.
+Do not apply `symworx-tui` / RQA / `symworx-io` rules here. The human contributor owns every change.
 
 ## Project overview
 
 Portable favorites + action launcher. Binary name: `sjmp`. Config: `~/.config/symjump/favorites.toml`.
-
-Sibling of [symworx/symworx](https://github.com/symworx/symworx); separate repo and release train.
 
 Authoritative design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md).
 

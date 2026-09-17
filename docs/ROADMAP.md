@@ -3,13 +3,14 @@
 ## 0. Docs
 
 - [x] Repo + branch layout
-- [x] Design: sidecar, UX, config, org placement
+- [x] Design: sidecar, UX, config
 - [x] Meta bindings; no Control; skip Emacs
 - [x] `M-x` action palette (toolbox + grok-build); not bound in Emacs
 - [x] Scope lock: tmux + Grok Build cwd; not a second Projectile
 - [x] Public-safe wording (no personal-system paths or private-repo names)
+- [x] Apache-2.0 `LICENSE`
 
-## 1. Spike (done on `feature/cli-build`)
+## 1. CLI (shipped)
 
 - [x] Rust bin `sjmp`: `favorites.toml` (closed TOML subset, no serde)
 - [x] `list`, `jump`, `pin`, `unpin`, `kids`
@@ -32,4 +33,3 @@
 - [ ] kitty / foot / gnome spawn (pane `cd` first)
 - [ ] zoxide frequent source
 - [ ] ratatui only if fzf fails
-- [ ] LICENSE file; merge to `develop`
