@@ -6,7 +6,8 @@ How to work in **symjump**. For agent rules see [AGENTS.md](AGENTS.md). For prod
 
 | Surface | Name |
 |---|---|
-| Install | `cargo install --path crates/sjmp` |
+| crates.io | `cargo install sjmp` |
+| From a checkout | `cargo install --path crates/sjmp` |
 | Binary on PATH | `sjmp` |
 | Config | `~/.config/symjump/favorites.toml` |
 
@@ -43,9 +44,28 @@ cargo test --workspace
 cargo run -p sjmp -- list
 ```
 
-## Release path
+## Releasing
 
 ```text
 feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
+```
+
+`CHANGELOG.md` must have a `## [X.Y.Z]` section. Tag `vX.Y.Z` on `worx` (must
+match `[workspace.package] version`). Then publish to crates.io, libraries
+first:
+
+```bash
+cargo publish -p symjump-config
+cargo publish -p symjump-core
+cargo publish -p sjmp
+```
+
+GitHub Environment `crates-io` holds `CARGO_REGISTRY_TOKEN` for a later
+tag-triggered workflow. Until then, publish by hand after the tag.
+
+From a checkout without crates.io:
+
+```bash
+toolbox run -c dev-rust cargo install --path crates/sjmp --root "$HOME/.local"
 ```
 

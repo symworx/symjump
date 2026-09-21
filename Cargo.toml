@@ -10,8 +10,10 @@ members = [
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.86"
+authors = ["Nathaniel T. Berry"]
 license = "Apache-2.0"
 repository = "https://github.com/symworx/symjump"
+homepage = "https://github.com/symworx/symjump"
 
 [workspace.dependencies]
 symjump-config = { path = "crates/symjump-config", version = "0.1.0" }

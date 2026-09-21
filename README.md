@@ -20,7 +20,7 @@ Kitty, foot, or a tmux pane.
 ## Install
 
 ```bash
-cargo install --path crates/sjmp
+cargo install sjmp
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
 eval "$(sjmp init bash)"   # defines jmp; binds M-p / M-P / M-x
 sjmp pin --current --label src --keys r
@@ -28,6 +28,8 @@ sjmp action add agent --cmd grok --keys g --label grok-build
 sjmp action add toolbox --name dev-python --keys p --label python
 sjmp list
 ```
+
+From a git checkout: `cargo install --path crates/sjmp`.
 
 `cargo install` only puts `sjmp` on `PATH`. The binary creates the config file
 on first run (default path only; `--config` is left alone) and will not

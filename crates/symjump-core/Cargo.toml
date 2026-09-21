@@ -3,7 +3,11 @@ name = "symjump-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
 description = "Resolve favorites, pin paths, build exec/toolbox commands"
 
 [dependencies]

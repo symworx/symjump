@@ -52,7 +52,8 @@ cargo run -p sjmp -- list
 feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
 ```
 
-No crates.io publish yet.
+Publish to crates.io from a `vX.Y.Z` tag on `worx`, in order: `symjump-config`,
+then `symjump-core`, then `sjmp`. Details: [DEVELOPMENT.md](DEVELOPMENT.md#releasing).
 
 ## Pull requests
 
