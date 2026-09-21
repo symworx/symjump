@@ -90,7 +90,7 @@ Avoided: SymTerm (reads as an emulator), SymKey (crypto), binary `sym` (taken).
 
 ## Branches
 
-GitHub Flow (same as [symworx](https://github.com/symworx/symworx)):
+**SymWorx org standard** (GitHub Flow):
 
 | Branch | Role |
 |---|---|

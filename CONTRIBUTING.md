@@ -1,6 +1,6 @@
 # Contributing to symjump
 
-Thank you for your interest. This is a small sibling of [SymWorx](https://github.com/symworx/symworx): a portable directory / action launcher (`sjmp`), **not** the biosignal workspace.
+Thank you for your interest. This is a portable directory / action launcher (`sjmp`), **not** the biosignal analysis workspace.
 
 ## Philosophy
 
@@ -9,7 +9,7 @@ Thank you for your interest. This is a small sibling of [SymWorx](https://github
 - **Places vs actions.** Places live here. Git/docker *commands* stay in the user’s shell kit. Toolbox *destinations* can live here.
 - **Meta, not Control.** Do not steal `C-g`, `C-c`, `C-x`, `C-z`. Do not bind `M-x` when `$INSIDE_EMACS` is set.
 
-Same quality bar as SymWorx: explicit errors, little `unsafe`, no surprise dependencies.
+Quality bar: explicit errors, little `unsafe`, no surprise dependencies.
 
 ## AI-assisted contributions
 
@@ -47,14 +47,14 @@ cargo run -p sjmp -- list
 
 ## Release path
 
-GitHub Flow: feature PRs go to **`worx`**. A release is a version bump on
+**SymWorx org standard** (GitHub Flow): feature PRs go to **`worx`**. A release is a version bump on
 `worx`, then a **manual** tag `vX.Y.Z`:
 
 ```text
 feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
 ```
 
-Same shape as SymWorx; no crates.io publish until LICENSE is set.
+No crates.io publish until LICENSE is set.
 
 ## Pull requests
 

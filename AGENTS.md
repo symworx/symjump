@@ -8,7 +8,7 @@ This is **not** the SymWorx science workspace. Do not apply `symworx-tui` / RQA 
 
 Portable favorites + action launcher. Binary name: `sjmp`. Config: `~/.config/symjump/favorites.toml`.
 
-Sibling of [symworx/symworx](https://github.com/symworx/symworx); separate repo and release train.
+Separate repository and release train from the biosignal analysis workspace.
 
 Authoritative design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md).
 
