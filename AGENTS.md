@@ -2,13 +2,11 @@
 
 Instructions for agentic tools in **this** repository.
 
-This is **not** the SymWorx science workspace. Do not apply `symworx-tui` / RQA / `symworx-io` rules here. The human contributor owns every change.
+Do not apply `symworx-tui` / RQA / `symworx-io` rules here. The human contributor owns every change.
 
 ## Project overview
 
 Portable favorites + action launcher. Binary name: `sjmp`. Config: `~/.config/symjump/favorites.toml`.
-
-Separate repository and release train from the biosignal analysis workspace.
 
 Authoritative design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -46,7 +44,7 @@ Ask first before changing chords or input priority in the picker.
 - Prefer fzf + a small Rust bin over a custom TUI.
 - Prefer calling `zoxide query` over inventing frecency.
 - New dependencies: ask first (especially GPU, async runtimes, extra TUI kits).
-- Feature PRs target `worx` (still `develop` until the GitHub default is renamed).
+- Feature PRs target `worx`.
 
 ## When to ask vs implement
 

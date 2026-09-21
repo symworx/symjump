@@ -1,6 +1,6 @@
 # Contributing to symjump
 
-Thank you for your interest. This is a portable directory / action launcher (`sjmp`), **not** the biosignal analysis workspace.
+Thank you for your interest. This is a portable directory / action launcher (`sjmp`).
 
 ## Philosophy
 
@@ -38,8 +38,6 @@ No need to wait for an issue assignment.
 4. Keep the change focused; update docs when behavior or bindings change.
 5. Open a PR against **`worx`**.
 
-Until GitHub renames the default branch, PRs still target **`develop`**.
-
 ```bash
 cargo test --workspace
 cargo run -p sjmp -- list
@@ -54,7 +52,7 @@ cargo run -p sjmp -- list
 feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
 ```
 
-No crates.io publish until LICENSE is set.
+No crates.io publish yet.
 
 ## Pull requests
 
@@ -67,7 +65,7 @@ No crates.io publish until LICENSE is set.
 
 [Contributor Covenant v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 
-Apache-2.0 intended (`Cargo.toml`). LICENSE file at public release.
+[Apache License 2.0](LICENSE).
 
 ## Questions
 

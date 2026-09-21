@@ -38,8 +38,7 @@ tmux: `cd` in the current pane first. Optional: `tmux new-window -c {path}`.
 
 | Home | Why |
 |---|---|
-| `github.com/symworx/symjump` | Sibling of the science stack |
-| Not `symworx/symworx` workspace | Not biosignal/dynamics |
+| `github.com/symworx/symjump` | Current GitHub home |
 | User's shell kit | `eval "$(sjmp init bash)"` — git/docker/PATH stay there |
 
 ## Architecture
