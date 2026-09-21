@@ -37,19 +37,23 @@ eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 
 ## Branches
 
-Work on `feature/cli-build`. PR to `develop`.
+GitHub Flow. Branch from **`worx`**. PR to `worx`.
+
+Until GitHub finishes renaming `develop` → `worx`, the default is still named `develop`.
 
 ```bash
 git clone git@github.com:symworx/symjump.git
 cd symjump
-git checkout feature/cli-build
+git checkout worx   # develop until GitHub renames the default
 cargo test --workspace
 cargo run -p sjmp -- list
 ```
 
 ## Release path
 
-`develop` → `stage` → `release/vX.Y.Z` → `main` → manual tag.
+```text
+feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
+```
 
 ## Related trees
 

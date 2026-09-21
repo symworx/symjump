@@ -32,4 +32,4 @@
 - [ ] kitty / foot / gnome spawn (pane `cd` first)
 - [ ] zoxide frequent source
 - [ ] ratatui only if fzf fails
-- [ ] LICENSE file; merge to `develop`
+- [ ] LICENSE file; merge to `worx`

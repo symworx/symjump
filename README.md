@@ -90,14 +90,14 @@ Avoided: SymTerm (reads as an emulator), SymKey (crypto), binary `sym` (taken).
 
 ## Branches
 
+GitHub Flow (same as [symworx](https://github.com/symworx/symworx)):
+
 | Branch | Role |
 |---|---|
-| `main` | stable / empty-ish product line |
-| `develop` | integration |
-| `stage` | pre-release |
-| `feature/cli-build` | CLI spike + this docs pass |
+| `worx` | Default. Feature PRs land here. |
+| `release/vX.Y.Z` | Optional freeze |
 
-Feature PRs target **`develop`**, not `main`. Path: `develop` → `stage` → `main` (same idea as [symworx](https://github.com/symworx/symworx)).
+Until GitHub finishes renaming `develop` → `worx`, PRs still target **`develop`**.
 
 ## Docs
 

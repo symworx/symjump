@@ -34,11 +34,11 @@ No need to wait for an issue assignment.
 
 1. Fork / clone.
 2. Read [docs/DESIGN.md](docs/DESIGN.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
-3. Branch from **`develop`**: `git checkout -b feature/your-change`.
+3. Branch from **`worx`**: `git checkout -b feature/your-change`.
 4. Keep the change focused; update docs when behavior or bindings change.
-5. Open a PR against **`develop`**.
+5. Open a PR against **`worx`**.
 
-Do **not** open feature PRs to `main`.
+Until GitHub renames the default branch, PRs still target **`develop`**.
 
 ```bash
 cargo test --workspace
@@ -47,7 +47,12 @@ cargo run -p sjmp -- list
 
 ## Release path
 
-`develop` → `stage` (FF) → `release/vX.Y.Z` → PR to `main` → merge → **manual** tag `vX.Y.Z`
+GitHub Flow: feature PRs go to **`worx`**. A release is a version bump on
+`worx`, then a **manual** tag `vX.Y.Z`:
+
+```text
+feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
+```
 
 Same shape as SymWorx; no crates.io publish until LICENSE is set.
 

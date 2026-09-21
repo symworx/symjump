@@ -46,7 +46,7 @@ Ask first before changing chords or input priority in the picker.
 - Prefer fzf + a small Rust bin over a custom TUI.
 - Prefer calling `zoxide query` over inventing frecency.
 - New dependencies: ask first (especially GPU, async runtimes, extra TUI kits).
-- Feature PRs target `develop`, not `main`.
+- Feature PRs target `worx` (still `develop` until the GitHub default is renamed).
 
 ## When to ask vs implement
 
