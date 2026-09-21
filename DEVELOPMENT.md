@@ -2,7 +2,7 @@
 
 How to work in **symjump**. For agent rules see [AGENTS.md](AGENTS.md). For product rules see [docs/DESIGN.md](docs/DESIGN.md).
 
-This repo is a sibling of [symworx/symworx](https://github.com/symworx/symworx), not a workspace member. Do not add it to that `Cargo.toml`.
+This is its own Cargo workspace. Do not treat it as a member of another organization workspace.
 
 ## Install name
 
@@ -37,20 +37,22 @@ eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
 
 ## Branches
 
-Work on `feature/cli-build`. PR to `develop`.
+**SymWorx org standard** (GitHub Flow). Branch from **`worx`**. PR to `worx`.
+
+Until GitHub finishes renaming `develop` → `worx`, the default is still named `develop`.
 
 ```bash
 git clone git@github.com:symworx/symjump.git
 cd symjump
-git checkout feature/cli-build
+git checkout worx   # develop until GitHub renames the default
 cargo test --workspace
 cargo run -p sjmp -- list
 ```
 
 ## Release path
 
-`develop` → `stage` → `release/vX.Y.Z` → `main` → manual tag.
+```text
+feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
+```
 
-## Related trees
 
-- SymWorx: https://github.com/symworx/symworx
