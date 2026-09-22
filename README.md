@@ -7,15 +7,12 @@ Not an emulator, not a project.el replacement, not your git/docker aliases.
 
 ## Why
 
-I was screen-sharing with friends and colleagues, jumping between directories
-with aliases and shortcuts. I sent them my bashrc. It worked — after they
-rewrote paths and names for their machines. Not a huge tax, but enough to be
-annoying. I wanted a list that was not a private shell dialect.
+Tired of aliases? I was.  
+Prefer keybindings? I do.  
 
-After [Omarchy](https://omarchy.org), the picture was clearer: zoxide + fzf + a
-terminal-agnostic hook travel; a pile of directory aliases do not. Pinned
-places and a few actions (toolbox, agent exec) should install the same way on
-Kitty, foot, or a tmux pane.
+My bash aliases were getting out of hand and while it worked for me, I started to see 
+some drift and some outdated/unused aliases. I wanted a simpler solution so I took some 
+learnings from [omarchy](https://omarchy.org) and created `symjump`. 
 
 ## Install
 
