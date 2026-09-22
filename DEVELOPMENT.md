@@ -50,6 +50,22 @@ cargo run -p sjmp -- list
 feature/*  ──PR──►  worx  ──tag──►  vX.Y.Z
 ```
 
+Version is single-sourced from `[workspace.package].version` in the root
+`Cargo.toml`. Members use `version.workspace = true`. Internal path deps
+(`symjump-config`, `symjump-core`) live under `[workspace.dependencies]`
+with a path + version pin (Cargo forbids `version.workspace = true` there).
+
+When the next release is `X.Y.Z`:
+
+```bash
+./scripts/bump-version.sh patch --changelog   # or minor / set X.Y.Z
+```
+
+That rewrites the workspace version, the `symjump-*` pins, `Cargo.lock`
+member versions, and the changelog tag / Unreleased compare links. Fill in
+`CHANGELOG.md` under `## [X.Y.Z]`, PR → `worx`. With no args the script is
+a consistency check only.
+
 `CHANGELOG.md` must have a `## [X.Y.Z]` section. Tag `vX.Y.Z` on `worx` (must
 match `[workspace.package] version`). Then publish to crates.io, libraries
 first:

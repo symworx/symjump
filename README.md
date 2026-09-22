@@ -12,10 +12,10 @@ with aliases and shortcuts. I sent them my bashrc. It worked — after they
 rewrote paths and names for their machines. Not a huge tax, but enough to be
 annoying. I wanted a list that was not a private shell dialect.
 
-After [Omarchy](https://omarchy.org), the picture was clearer: zoxide + fzf + a
-terminal-agnostic hook travel; a pile of directory aliases do not. Pinned
-places and a few actions (toolbox, agent exec) should install the same way on
-Kitty, foot, or a tmux pane.
+After testing [Omarchy](https://omarchy.org), the picture was clearer: 
+zoxide + fzf + a terminal-agnostic hook travel; a pile of directory 
+aliases do not. Pinned places and a few actions should install the same way
+in the terminal.
 
 ## Install
 
