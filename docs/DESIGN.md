@@ -80,7 +80,7 @@ Type or hit the letter. Then pick a place if the action needs one.
 
 | Key | Action | Effect |
 |---|---|---|
-| `t` | toolbox | list `[[actions.toolbox]]` → `toolbox enter <name>` |
+| `t` | toolbox | list `[[actions.toolbox]]` → `toolbox enter` or `distrobox enter` (whichever is on PATH) |
 | `g` | grok / build | pick favorite → `cd {path} && grok` |
 | `e` | exec | configured `{cmd}` with `{path}` |
 | `p` | places | same as `M-p` |
@@ -115,6 +115,11 @@ keys = "p"
 
 A `tb` → `toolbox` alias, if any, stays in the user's shell kit. This repo
 does not ship it.
+A `[[actions.toolbox]]` entry works with either `toolbox` or `distrobox`.
+The enter command prefers `toolbox` if it is on `PATH`, otherwise `distrobox`.
+Distrobox already abstracts the underlying runtime (podman or docker), so a
+separate docker enter action is not required for named environments.
+
 
 ## Git vs kids
 
