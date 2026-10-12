@@ -23,6 +23,7 @@ eval "$(sjmp init bash)"   # defines jmp; binds M-p / M-P / M-x
 sjmp pin --current --label src --keys r
 sjmp action add agent --cmd grok --keys g --label grok-build
 sjmp action add toolbox --name dev-python --keys p --label python
+# toolbox actions prefer `toolbox` if present, else `distrobox`
 sjmp list
 ```
 
