@@ -16,9 +16,8 @@ Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bas
 
 Remaining:
 
-1. Optional `M-RET` → `tmux new-window -c {path}`.
-2. Spawn backends (generic `cd`, kitty, foot, gnome/ptyxis, wezterm).
-3. Native ratatui picker only if fzf is not enough.
+1. Spawn backends (generic `cd`, kitty, foot, gnome/ptyxis, wezterm).
+2. Native ratatui picker only if fzf is not enough.
 
 Do **not** start a VTE/GPU terminal emulator. Do **not** bind anything when `$INSIDE_EMACS` is set (no vterm `M-p t` in v1).
 
@@ -30,9 +29,13 @@ Do **not** start a VTE/GPU terminal emulator. Do **not** bind anything when `$IN
 | `M-P` | kids of `$PWD` |
 | `M-x` | actions, bare terminal only |
 | `M-<key>` | jump favorite with that `keys` letter |
+| Enter | places and kids pickers: `cd` |
+| `a` | those pickers, query empty: dashboard for `[ai] default` |
+| `l` | those pickers, query empty: dashboard for `[ai] local`. Bare `ollama` lists models in the pane and does not load one until it is picked |
 
-`pin --keys` must refuse `p`/`P`/`x` (sjmp), `b`/`f`/`d`/`y` (readline), and duplicate favorite keys.
-| `M-RET` | new window/tab at selection |
+`pin --keys` must refuse `p`/`P`/`x` (sjmp), `b`/`f`/`d`/`y` (readline), and duplicate favorite keys. `M-RET` is not bound.
+
+If tmux is missing, `a` and `l` print that and stop. Do not download or install tmux. Do not bind `o` for this.
 
 Never bind `C-g`, `C-c`, `C-x`, `C-z`, or global `M-x` / `M-w` under Emacs. The hook stays off when `$INSIDE_EMACS` is set, so terminal `M-w` does not steal Emacs `M-w`.
 

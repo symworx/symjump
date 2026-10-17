@@ -5,6 +5,10 @@ leader = "M-p"
 kids = "M-P"
 actions = "M-x"
 
+[ai]
+default = "grok"
+local = "ollama"
+
 [[favorites]]
 label = "src"
 path = "~/src"
@@ -19,6 +23,16 @@ keys = "s"
 label = "python"
 name = "dev-python"
 keys = "p"
+
+[[actions.agent]]
+label = "agent"
+keys = "a"
+cmd = "sjmp_tmux_dash '{path}'"
+
+[[actions.agent]]
+label = "ollama"
+keys = "l"
+cmd = "sjmp_tmux_dash '{path}' local"
 
 [[actions.agent]]
 label = "grok-build"

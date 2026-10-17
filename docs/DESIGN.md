@@ -32,7 +32,7 @@ What this project is for:
 What this project is not: a second Projectile, a zoxide replacement, an
 in-agent `/cd`, a kids file manager in v1, a ratatui app until fzf fails.
 
-tmux: `cd` in the current pane first. Optional: `tmux new-window -c {path}`.
+tmux: Enter in the picker `cd`s the current pane. `a` opens the dashboard for `[ai] default` (grok, claude, or codex). `l` opens it for `[ai] local`. If `tmux` is not on `PATH`, sjmp prints that and stops. It does not install tmux.
 
 ## Placement
 
@@ -64,6 +64,15 @@ Document `alt-sends-escape`.
 | `M-P` | same | kids of `$PWD` |
 | **`M-x`** | same, **never in Emacs** | action palette |
 | `M-<key>` | same | jump the favorite whose `keys` is that letter (`M-w`, `M-j`, …) |
+| Enter | places (`M-p`) and kids (`M-P`) pickers | `cd` to the highlighted directory |
+| `a` | those pickers, query empty | tmux dashboard using `[ai] default` |
+| `l` | those pickers, query empty | tmux dashboard using `[ai] local` |
+
+`a` and `l` are ordinary filter letters once the query is non-empty, same rule as `1`–`9`. `o` is not bound.
+
+`[ai] default` is `grok`, `claude`, `codex`, or `local`. `[ai] local` is the command for `l` (`ollama` unless you set another). Bare `ollama` opens a model list in the left pane (`ollama list` through fzf) and runs `ollama run <name>` only after a pick. No model is loaded before that. With no models installed, the pane says so and drops to a shell so you can `ollama pull <name>`. `ollama run <name>` in `[ai] local` starts that model directly. Any other local command is run as written (a vLLM command can use that until it has its own picker). `M-x` then `a` runs `sjmp_tmux_dash '{path}'`, which uses `default`. `M-x` then `l` runs `sjmp_tmux_dash '{path}' local` when that action is configured. `SJMP_AGENT_CMD` overrides `default` for one shell. It does not change `l`. A new shell picks up a changed `favorites.toml`.
+
+The dashboard is one tmux window. The left pane runs that agent and leaves a shell when it exits. The right column is two shells. Inside tmux this is a new window in the current session. Outside tmux it is session `sjmp-<directory>`, then attach. The current pane's directory changes only on Enter.
 
 `sjmp pin --keys` refuses letters that are already taken:
 
@@ -71,8 +80,7 @@ Document `alt-sends-escape`.
 - readline emacs-mode: `b` / `f` (word motion), `d` (kill-word), `y` (yank-pop)
 - any `keys` already used by another favorite
 
-Also leave Control alone (`C-g`, `C-c`, `C-x`, `C-z`). Crowded but still allowed: `M-u` / `M-l` / `M-c` (case), `M-.` (last arg; not a letter so never a favorite Meta bind).
-| `M-RET` | inside a picker | new tmux window / tab at path |
+Also leave Control alone (`C-g`, `C-c`, `C-x`, `C-z`). Crowded but still allowed: `M-u` / `M-l` / `M-c` (case), `M-.` (last arg; not a letter so never a favorite Meta bind). `M-RET` is not bound.
 
 ### After `M-x` (action palette)
 
@@ -151,10 +159,8 @@ Shipped on `feature/cli-build`:
 4. `M-p` places, `M-P` kids, `M-x` from `sjmp action list`
 5. Numbered picks `1`–`9` only while the fzf query is empty
 6. `sjmp action` / `action add` / `action rm` / `exec` / `toolbox`
+7. Places and kids pickers: Enter `cd`s; `a` opens the default agent; `l` opens the local agent
 
-Next: optional `tmux new-window -c {path}` on `M-RET`.
-
-Later: spawn backends (kitty / foot / gnome / wezterm), zoxide, ratatui
-if fzf fails, LICENSE file.
+Next: spawn backends other than tmux (kitty / foot / gnome / wezterm), zoxide, ratatui if fzf fails.
 
 Do not start a VTE/GPU emulator.

@@ -24,7 +24,7 @@
 - [x] Bind `M-P` → `sjmp kids` + fzf
 - [x] Numbered picks `1`–`9` only while the query is empty
 - [x] Drive `M-x` from `sjmp action list` (not a hardcoded `g`/`t`/`e` menu)
-- [ ] Optional: `tmux new-window -c {path}` on `M-RET`
+- [x] Places and kids pickers: Enter `cd`s; `a` opens `[ai] default`; `l` opens `[ai] local`
 
 `sjmp action` / `exec` / `toolbox` print the command line; the shell hook runs it.
 
