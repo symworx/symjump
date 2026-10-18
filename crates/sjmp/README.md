@@ -4,14 +4,14 @@ Pinned places and a few actions for a real terminal. This crate is the `sjmp`
 CLI for [symjump](https://github.com/symworx/symjump).
 
 Not an emulator, not a project.el replacement, not your git/docker aliases.
-`eval "$(sjmp init bash)"` is the hook; it stays off when `$INSIDE_EMACS` is set.
+`eval "$(sjmp init bash)"` is the hook. It runs in a normal shell and in Emacs vterm (`INSIDE_EMACS=vterm`). Other Emacs shells skip it.
 
 ## Install
 
 ```bash
 cargo install sjmp
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
-eval "$(sjmp init bash)"   # defines jmp; binds M-p / M-P / M-x
+eval "$(sjmp init bash)"   # defines jmp; binds M-p / M-P / M-x / M-Enter
 sjmp pin --current --label src --keys r
 sjmp action add agent --cmd grok --keys g --label grok-build
 sjmp action add toolbox --name dev-python --keys p --label python

@@ -15,7 +15,7 @@ How to work in **symjump**. For agent rules see [AGENTS.md](AGENTS.md). For prod
 # Host has no rustup. Build/install from the rust toolbox onto ~/.local/bin:
 toolbox run -c dev-rust cargo install --path crates/sjmp --root "$HOME/.local"
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
-eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
+eval "$(sjmp init bash)"   # runs in a normal shell and in vterm; other Emacs shells skip
 ```
 
 ## Crates
