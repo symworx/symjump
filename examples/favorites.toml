@@ -19,6 +19,12 @@ label = "symworx"
 path = "~/src/symworx"
 keys = "s"
 
+# Plain tmux for the current directory. Use "sjmp_tmux '{path}'" to pick a favorite.
+[[actions.agent]]
+label = "tmux"
+keys = "t"
+cmd = "sjmp_tmux"
+
 [[actions.toolbox]]
 label = "python"
 name = "dev-python"

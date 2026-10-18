@@ -294,6 +294,8 @@ fn init_bash() {
     assert!(s.contains(r#"bind '"\ep": "\C-ujmp\C-m"'"#));
     assert!(s.contains(r#"bind '"\eP": "\C-usjmp_kids\C-m"'"#));
     assert!(s.contains(r#"bind '"\ex": "\C-usjmp_actions\C-m"'"#));
+    assert!(s.contains(r#"bind '"\e\C-m": "\C-usjmp_actions\C-m"'"#));
+    assert!(s.contains(r#"bind '"\e\C-j": "\C-usjmp_actions\C-m"'"#));
     assert!(s.contains("action list"));
     assert!(!s.contains("verb list"));
     assert!(s.contains("pos(1)+accept"));

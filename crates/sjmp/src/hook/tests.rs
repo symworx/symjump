@@ -12,6 +12,8 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains(r#"bind '"\ep": "\C-ujmp\C-m"'"#));
     assert!(h.contains(r#"bind '"\eP": "\C-usjmp_kids\C-m"'"#));
     assert!(h.contains(r#"bind '"\ex": "\C-usjmp_actions\C-m"'"#));
+    assert!(h.contains(r#"bind '"\e\C-m": "\C-usjmp_actions\C-m"'"#));
+    assert!(h.contains(r#"bind '"\e\C-j": "\C-usjmp_actions\C-m"'"#));
     assert!(h.contains("jmp()"));
     assert!(!h.contains("cdw()"));
     assert!(h.contains("action list"));
@@ -22,7 +24,12 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains(r#"unbind(1,2,3,4,5,6,7,8,9)"#));
     assert!(h.contains("sjmp_fzf_nav 'fav> '"));
     assert!(h.contains("sjmp_fzf_nav 'kids> '"));
-    assert!(h.contains("sjmp_fzf 'action> '"));
+    assert!(h.contains("sjmp_fzf_action"));
+    assert!(h.contains("prompt='action> '"));
+    assert!(h.contains("agent  t  tmux  sjmp_tmux"));
+    assert!(h.contains("sjmp_tmux()"));
+    assert!(h.contains("Install tmux, then press t again."));
+    assert!(h.contains("t: tmux session"));
     assert!(h.contains("sjmp_fzf 'fav> '"));
     assert!(h.contains(r#"unbind(1,2,3,4,5,6,7,8,9,a,l)"#));
     assert!(!h.contains("printf o >"));

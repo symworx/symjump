@@ -28,12 +28,14 @@ Do **not** start a VTE/GPU terminal emulator. Do **not** bind anything when `$IN
 | `M-p` | places |
 | `M-P` | kids of `$PWD` |
 | `M-x` | actions, bare terminal only |
+| `M-Enter` | same palette. `\e\C-m` and `\e\C-j`. A tmux root binding can consume it before readline |
+| `t` | in that palette, query empty: plain tmux for `$PWD` (`sjmp_tmux`). A configured key `t` replaces it |
 | `M-<key>` | jump favorite with that `keys` letter |
 | Enter | places and kids pickers: `cd` |
 | `a` | those pickers, query empty: dashboard for `[ai] default` |
 | `l` | those pickers, query empty: dashboard for `[ai] local`. Bare `ollama` lists models in the pane and does not load one until it is picked |
 
-`pin --keys` must refuse `p`/`P`/`x` (sjmp), `b`/`f`/`d`/`y` (readline), and duplicate favorite keys. `M-RET` is not bound.
+`pin --keys` must refuse `p`/`P`/`x` (sjmp), `b`/`f`/`d`/`y` (readline), and duplicate favorite keys. `M-Enter` opens actions alongside `M-x`. Do not move actions off `M-x`: inside tmux, `M-Enter` often never reaches the shell.
 
 If tmux is missing, `a` and `l` print that and stop. Do not download or install tmux. Do not bind `o` for this.
 

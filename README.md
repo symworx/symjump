@@ -19,7 +19,7 @@ learnings from [omarchy](https://omarchy.org) and created `symjump`.
 ```bash
 cargo install sjmp
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
-eval "$(sjmp init bash)"   # defines jmp; binds M-p / M-P / M-x
+eval "$(sjmp init bash)"   # defines jmp; binds M-p / M-P / M-x / M-Enter
 sjmp pin --current --label src --keys r
 sjmp action add agent --cmd grok --keys g --label grok-build
 sjmp action add toolbox --name dev-python --keys p --label python
@@ -50,14 +50,18 @@ Meta, not Control. Bound outside Emacs only. See [docs/DESIGN.md](docs/DESIGN.md
 | `M-p` | favorites / places |
 | `M-P` | kids of `$PWD` |
 | `M-x` | action palette (`sjmp action list`) |
+| `M-Enter` | same palette, when the key reaches readline |
 | `M-<key>` | jump the favorite with that `keys` letter |
 | Enter | in the places or kids picker: `cd` |
 | `a` | in those pickers, query empty: dashboard for `[ai] default` (grok, claude, or codex) |
 | `l` | in those pickers, query empty: dashboard for `[ai] local` |
+| `t` | in the action palette, query empty: plain tmux session for `$PWD` |
 
 The dashboard is a tmux window. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. Two shells sit on the right. Inside tmux it is a new window. Outside tmux it is session `sjmp-<directory>`. If tmux is not installed, sjmp says so and stops.
 
-`M-x` then `a` opens the default dashboard when the action is `sjmp_tmux_dash '{path}'`. `M-x` then `l` opens the local one when the action is `sjmp_tmux_dash '{path}' local`. `SJMP_AGENT_CMD` overrides that default for one shell, not `l`. Other `M-x` actions are unchanged: Enter there still runs the action.
+`M-x` or `M-Enter`, then `t`, opens a plain tmux session for the current directory. No agent and no extra panes. Outside tmux this attaches to `sjmp-<directory>` or creates it. Inside tmux it is a new window in the current session. An action whose key is already `t` replaces that default. `sjmp_tmux '{path}'` still asks for a favorite, then opens that directory.
+
+`M-x` or `M-Enter`, then `a`, opens the default dashboard when the action is `sjmp_tmux_dash '{path}'`. `M-x` or `M-Enter`, then `l`, opens the local one when the action is `sjmp_tmux_dash '{path}' local`. `SJMP_AGENT_CMD` overrides that default for one shell, not `l`. Other actions are unchanged: Enter there still runs the action. Inside tmux, a root binding on `M-Enter` runs first, so `M-x` is the actions chord that reaches the shell there.
 
 `pin --keys` refuses `p` / `P` / `x` (sjmp chords), `b` / `f` / `d` / `y`
 (readline), and letters already used by another favorite.
