@@ -7,7 +7,7 @@ Thank you for your interest. This is a portable directory / action launcher (`sj
 - **Portable over personal.** Config and hooks should work on someone else’s machine without rewriting their bashrc.
 - **Sidecar, not an emulator plugin.** Kitty / foot / GNOME / tmux are spawn targets, not hosts for a shared ABI.
 - **Places vs actions.** Places live here. Git/docker *commands* stay in the user’s shell kit. Toolbox *destinations* can live here.
-- **Meta, not Control.** Do not steal `C-g`, `C-c`, `C-x`, `C-z`. Do not bind `M-x` when `$INSIDE_EMACS` is set.
+- **Meta, not Control.** Do not steal `C-g`, `C-c`, `C-x`, `C-z`. Do not take Emacs `M-x` inside vterm. The hook runs when `$INSIDE_EMACS` is unset or `vterm`.
 
 Quality bar: explicit errors, little `unsafe`, no surprise dependencies.
 

@@ -1,14 +1,20 @@
-# sjmp / symjump — skip inside Emacs
-if [ -n "${INSIDE_EMACS:-}" ]; then
-  return 0 2>/dev/null || exit 0
-fi
+# sjmp / symjump
+# Run in a normal shell and in Emacs vterm (INSIDE_EMACS=vterm).
+# comint and other Emacs shells still skip the hook.
+case "${INSIDE_EMACS:-}" in
+  ""|vterm) ;;
+  *) return 0 2>/dev/null || exit 0 ;;
+esac
 sjmp_bin="$(command -v sjmp 2>/dev/null || true)"
 [ -z "$sjmp_bin" ] && return 0 2>/dev/null || true
 # Numbered picks 1-9 only while the query is empty (digits filter once you type).
 sjmp_fzf() {
   local prompt="${1:-fav> }"
   local height="${2:-40%}"
-  fzf --height="$height" --reverse --prompt="$prompt" \
+  local header="${3:-}"
+  local -a hdr=()
+  [ -n "$header" ] && hdr=(--header "$header")
+  fzf --height="$height" --reverse --prompt="$prompt" "${hdr[@]}" \
     --bind '1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept' \
     --bind 'change:transform:[[ -z "{q}" ]] && echo rebind(1,2,3,4,5,6,7,8,9) || echo unbind(1,2,3,4,5,6,7,8,9)'
 }
@@ -21,38 +27,54 @@ sjmp_fzf_nav() {
   local modeq
   : > "$modefile"
   modeq=$(printf '%q' "$modefile")
-  fzf --height="$height" --reverse --prompt="$prompt" --header 'enter: cd   a: __SJMP_AI_NAME__   l: __SJMP_AI_LOCAL_NAME__' \
+  fzf --height="$height" --reverse --prompt="$prompt" --header 'enter: cd   a: __SJMP_AI_NAME__   l: __SJMP_AI_LOCAL_NAME__   esc: close' \
     --bind '1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept' \
     --bind "a:execute-silent(printf a > $modeq)+accept" \
     --bind "l:execute-silent(printf l > $modeq)+accept" \
     --bind 'change:transform:[[ -z "{q}" ]] && echo "rebind(1,2,3,4,5,6,7,8,9,a,l)" || echo "unbind(1,2,3,4,5,6,7,8,9,a,l)"'
 }
-# Action palette. t, while the query is empty, runs the action whose key is t.
-# That is a plain tmux session unless favorites.toml already uses t.
+# Action palette. A letter, while the query is empty, runs the row whose key
+# is that letter. Search uses the key and the label, not the kind word.
+# t is a plain tmux session unless favorites.toml already uses t.
 sjmp_fzf_action() {
-  local rows="$1" modefile="$2" tfile t_row t_payload header t_q modeq status
-  t_row="$(printf '%s\n' "$rows" | awk '$2 == "t" { print; exit }')"
-  t_payload="$(printf '%s\n' "$t_row" | awk '{for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : "")}')"
-  if [ "$t_payload" = sjmp_tmux ]; then
-    header='t: tmux session'
-  else
-    header='t: key t'
-  fi
-  tfile="$(mktemp)"
-  printf '%s\n' "$t_row" > "$tfile"
-  t_q=$(printf '%q' "$tfile")
+  local rows="$1" modefile="$2"
+  local dir row key key_q modeq names binds header t_payload status
+  dir="$(mktemp -d)"
   modeq=$(printf '%q' "$modefile")
+  names="1,2,3,4,5,6,7,8,9"
+  binds='1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept'
+  printf '%s\n' "$rows" > "$dir/rows"
+  while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    key=$(printf '%s\n' "$row" | awk '{print $2}')
+    case "$key" in
+      [a-zA-Z]) ;;
+      *) continue ;;
+    esac
+    # First row for a key wins. "rows" is the list file, not a key.
+    [ -e "$dir/$key" ] && continue
+    printf '%s\n' "$row" > "$dir/$key"
+    key_q=$(printf '%q' "$dir/$key")
+    binds="${binds},${key}:execute-silent(cp ${key_q} ${modeq})+abort"
+    names="${names},${key}"
+  done < "$dir/rows"
+  t_payload="$(awk '$2 == "t" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
+  if [ "$t_payload" = sjmp_tmux ]; then
+    header='letter: that key    t: tmux session    esc: close'
+  else
+    header='letter: that key    esc: close'
+  fi
   printf '%s\n' "$rows" | fzf --height=20% --reverse --prompt='action> ' --header "$header" \
-    --bind '1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept' \
-    --bind "t:execute-silent(cp $t_q $modeq)+abort" \
-    --bind 'change:transform:[[ -z "{q}" ]] && echo "rebind(1,2,3,4,5,6,7,8,9,t)" || echo "unbind(1,2,3,4,5,6,7,8,9,t)"'
+    --nth=2,3 \
+    --bind "$binds" \
+    --bind "change:transform:[[ -z \"{q}\" ]] && echo \"rebind(${names})\" || echo \"unbind(${names})\""
   status=$?
-  rm -f "$tfile"
+  rm -rf "$dir"
   return "$status"
 }
 sjmp_pick_fav() {
   local line key
-  line="$("$sjmp_bin" list | sjmp_fzf 'fav> ')" || return
+  line="$("$sjmp_bin" list | sjmp_fzf 'fav> ' '40%' 'esc: back')" || return
   [ -z "$line" ] && return
   key=$(printf '%s\n' "$line" | awk '{print $1}')
   [ -n "$key" ] && "$sjmp_bin" jump "$key"
@@ -93,15 +115,19 @@ sjmp_tmux_slug() {
   printf '%s\n' "$slug"
 }
 sjmp_tmux_layout() {
-  local target="$1" path="$2" agent="$3"
-  tmux split-window -t "$target" -h -c "$path" -l 34%
-  tmux split-window -t "${target}.1" -v -c "$path" -l 50%
+  local target="$1" path="$2" agent="$3" left right bottom
+  # pane-base-index may be 1, so .0/.1/.2 do not name these panes.
+  left="$(tmux display-message -p -t "$target" '#{pane_id}')"
+  # Left stays full height. The new pane is the right column, 34% wide.
+  right="$(tmux split-window -t "$left" -h -P -F '#{pane_id}' -c "$path" -l 34%)"
+  # Two shells in that column, one above the other.
+  bottom="$(tmux split-window -t "$right" -v -P -F '#{pane_id}' -c "$path" -l 50%)"
   tmux set-option -w -t "$target" pane-border-status top
   tmux set-option -w -t "$target" pane-border-format '#{pane_index} #{pane_title}'
-  tmux select-pane -t "${target}.0" -T "${agent%% *}"
-  tmux select-pane -t "${target}.1" -T shell
-  tmux select-pane -t "${target}.2" -T shell
-  tmux select-pane -t "${target}.0"
+  tmux select-pane -t "$left" -T "${agent%% *}"
+  tmux select-pane -t "$right" -T shell
+  tmux select-pane -t "$bottom" -T shell
+  tmux select-pane -t "$left"
 }
 sjmp_tmux_dash() {
   local path="$1" agent slug session target pane_cmd title
@@ -210,50 +236,68 @@ sjmp_kids() {
   fi
 }
 sjmp_actions() {
-  local rows row kind payload sel modefile saved
+  local rows row kind payload sel modefile saved status
   rows="$("$sjmp_bin" action list)"
   if ! printf '%s\n' "$rows" | awk '$2 == "t" { found = 1 } END { exit !found }'; then
     if [ -n "$rows" ]; then
-      rows="agent  t  tmux  sjmp_tmux"$'\n'"$rows"
+      rows="${rows}"$'\n'"session  t  tmux  sjmp_tmux"
     else
-      rows="agent  t  tmux  sjmp_tmux"
+      rows="session  t  tmux  sjmp_tmux"
     fi
   fi
-  modefile="$(mktemp)"
-  : > "$modefile"
-  if ! row="$(sjmp_fzf_action "$rows" "$modefile")"; then
-    saved="$(cat "$modefile" 2>/dev/null || true)"
-    rm -f "$modefile"
-    row="$saved"
-  else
-    rm -f "$modefile"
-  fi
-  [ -z "$row" ] && return
-  kind=$(printf '%s\n' "$row" | awk '{print $1}')
-  payload=$(printf '%s\n' "$row" | awk '{for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : "\n")}')
-  case "$kind" in
-    toolbox)
-      [ -n "$payload" ] && toolbox enter "$payload"
-      ;;
-    agent)
-      # Bare sjmp_tmux is the default: this directory, no favorite prompt.
-      # sjmp_tmux '{path}' still picks a favorite, then opens that directory.
-      if [ "$payload" = sjmp_tmux ]; then
+  # Esc closes this first picker. Esc on the favorite picker comes back here.
+  while true; do
+    modefile="$(mktemp)"
+    : > "$modefile"
+    if ! row="$(sjmp_fzf_action "$rows" "$modefile")"; then
+      saved="$(cat "$modefile" 2>/dev/null || true)"
+      rm -f "$modefile"
+      row="$saved"
+    else
+      rm -f "$modefile"
+    fi
+    [ -z "$row" ] && return
+    kind=$(printf '%s\n' "$row" | awk '{print $1}')
+    payload=$(printf '%s\n' "$row" | awk '{for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : "\n")}')
+    case "$kind" in
+      toolbox)
+        [ -n "$payload" ] && toolbox enter "$payload"
+        return
+        ;;
+      session)
         sjmp_tmux
-      else
-        sel="$(sjmp_pick_fav)" || return
-        [ -z "$sel" ] && return
+        return
+        ;;
+      agent)
+        # Bare sjmp_tmux is the default: this directory, no favorite prompt.
+        # sjmp_tmux '{path}' still picks a favorite, then opens that directory.
+        if [ "$payload" = sjmp_tmux ]; then
+          sjmp_tmux
+          return
+        fi
+        status=0
+        sel="$(sjmp_pick_fav)" || status=$?
+        # 130 is Esc or Ctrl-C from fzf. Other failures stop.
+        [ "$status" -eq 130 ] && continue
+        [ "$status" -ne 0 ] && return
+        [ -z "$sel" ] && continue
         eval "$("$sjmp_bin" exec "$sel" --cmd "$payload")"
-      fi
-      ;;
-  esac
+        return
+        ;;
+      *)
+        return
+        ;;
+    esac
+  done
 }
-if [ -n "${BASH_VERSION:-}" ]; then
-  # Readline macros, not bind -x: bash reverts cd after a bind -x widget.
+# Readline macros, not bind -x: bash reverts cd after a bind -x widget.
+# Non-interactive shells have no line editing. bind would warn there.
+if [ -n "${BASH_VERSION:-}" ] && case $- in *i*) true ;; *) false ;; esac; then
   bind '"\ep": "\C-ujmp\C-m"'
   bind '"\eP": "\C-usjmp_kids\C-m"'
+  # M-x opens the palette when readline receives it. vterm keeps M-x
+  # for Emacs, so the shared actions chord there is M-Enter.
   bind '"\ex": "\C-usjmp_actions\C-m"'
-  # M-Enter is the same palette. Terminals send Enter as CR or LF.
-  # A tmux root binding can consume M-Enter before readline sees it.
+  # Terminals send Enter as CR or LF.
   bind '"\e\C-m": "\C-usjmp_actions\C-m"'
   bind '"\e\C-j": "\C-usjmp_actions\C-m"'

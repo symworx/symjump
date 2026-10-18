@@ -12,14 +12,14 @@ Authoritative design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [docs/ROADMAP.m
 
 ## What to build (in order)
 
-Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bash hook + `jmp`, `M-p` / `M-P` / `M-x` skipped when `INSIDE_EMACS`, numbered picks while the query is empty, `sjmp action` / `action add` / `action rm` / `exec` / `toolbox`.
+Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bash hook + `jmp`, `M-p` / `M-P` / `M-Enter` in a normal shell and in vterm, `M-x` when readline receives it, numbered picks while the query is empty, `sjmp action` / `action add` / `action rm` / `exec` / `toolbox`.
 
 Remaining:
 
 1. Spawn backends (generic `cd`, kitty, foot, gnome/ptyxis, wezterm).
 2. Native ratatui picker only if fzf is not enough.
 
-Do **not** start a VTE/GPU terminal emulator. Do **not** bind anything when `$INSIDE_EMACS` is set (no vterm `M-p t` in v1).
+Do **not** start a VTE/GPU terminal emulator. The bash hook runs when `$INSIDE_EMACS` is unset or `vterm`. Other Emacs shells still skip it.
 
 ## Bindings (do not change without asking)
 
@@ -27,19 +27,21 @@ Do **not** start a VTE/GPU terminal emulator. Do **not** bind anything when `$IN
 |---|---|
 | `M-p` | places |
 | `M-P` | kids of `$PWD` |
-| `M-x` | actions, bare terminal only |
-| `M-Enter` | same palette. `\e\C-m` and `\e\C-j`. A tmux root binding can consume it before readline |
-| `t` | in that palette, query empty: plain tmux for `$PWD` (`sjmp_tmux`). A configured key `t` replaces it |
+| `M-x` | actions when readline receives the key. vterm does not send it |
+| `M-Enter` | actions in a bare terminal, tmux, and vterm. `\e\C-m` and `\e\C-j`. A tmux root binding can consume it before readline |
+| letter | in that palette, query empty: run the action whose key is that letter. The filter matches the key and the label, not the kind word |
+| `t` | that default, when key `t` is free: plain tmux for `$PWD` (`sjmp_tmux`). The row kind is `session`. A configured key `t` replaces it |
+| `Esc` | on a later picker: back to the previous one. On the first picker: close |
 | `M-<key>` | jump favorite with that `keys` letter |
 | Enter | places and kids pickers: `cd` |
 | `a` | those pickers, query empty: dashboard for `[ai] default` |
 | `l` | those pickers, query empty: dashboard for `[ai] local`. Bare `ollama` lists models in the pane and does not load one until it is picked |
 
-`pin --keys` must refuse `p`/`P`/`x` (sjmp), `b`/`f`/`d`/`y` (readline), and duplicate favorite keys. `M-Enter` opens actions alongside `M-x`. Do not move actions off `M-x`: inside tmux, `M-Enter` often never reaches the shell.
+`pin --keys` must refuse `p`/`P`/`x` (sjmp), `b`/`f`/`d`/`y` (readline), and duplicate favorite keys. `M-Enter` is the actions chord that works in tmux and in vterm. Keep `M-x` as the readline alias. Do not move the vterm actions chord onto `M-x`.
 
 If tmux is missing, `a` and `l` print that and stop. Do not download or install tmux. Do not bind `o` for this.
 
-Never bind `C-g`, `C-c`, `C-x`, `C-z`, or global `M-x` / `M-w` under Emacs. The hook stays off when `$INSIDE_EMACS` is set, so terminal `M-w` does not steal Emacs `M-w`.
+Never bind `C-g`, `C-c`, `C-x`, `C-z`, or Emacs's own `M-x`. vterm must keep `M-x`. The hook may bind readline `M-x` in the shell. It does not bind Emacs keys. `M-w` in an editing buffer stays copy. In vterm and in a bare terminal, `M-w` is the favorite jump when that letter is pinned.
 
 Ask first before changing chords or input priority in the picker.
 

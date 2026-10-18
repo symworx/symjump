@@ -19,7 +19,8 @@ label = "symworx"
 path = "~/src/symworx"
 keys = "s"
 
-# Plain tmux for the current directory. Use "sjmp_tmux '{path}'" to pick a favorite.
+# Key t replaces the built-in session row (plain tmux for the current directory).
+# Use "sjmp_tmux '{path}'" to pick a favorite first.
 [[actions.agent]]
 label = "tmux"
 keys = "t"

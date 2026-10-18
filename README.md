@@ -3,7 +3,7 @@
 Pinned places and a few actions for a real terminal. Binary: `sjmp`.
 
 Not an emulator, not a project.el replacement, not your git/docker aliases.
-`eval "$(sjmp init bash)"` is the hook; it stays off when `$INSIDE_EMACS` is set.
+`eval "$(sjmp init bash)"` is the hook. It runs in a normal shell and in Emacs vterm (`INSIDE_EMACS=vterm`). Other Emacs shells skip it.
 
 ## Why
 
@@ -43,25 +43,26 @@ A fuller sample is [examples/favorites.toml](examples/favorites.toml).
 
 ## Bindings
 
-Meta, not Control. Bound outside Emacs only. See [docs/DESIGN.md](docs/DESIGN.md).
+Meta, not Control. The same chords work in a bare terminal, in tmux, and in Emacs vterm. vterm keeps `M-x` for Emacs, so actions there are `M-Enter`. See [docs/DESIGN.md](docs/DESIGN.md).
 
 | Chord | Action |
 |---|---|
 | `M-p` | favorites / places |
 | `M-P` | kids of `$PWD` |
-| `M-x` | action palette (`sjmp action list`) |
-| `M-Enter` | same palette, when the key reaches readline |
+| `M-Enter` | action palette in a bare terminal, tmux, and vterm |
+| `M-x` | same palette when readline receives it (vterm keeps this key) |
 | `M-<key>` | jump the favorite with that `keys` letter |
 | Enter | in the places or kids picker: `cd` |
 | `a` | in those pickers, query empty: dashboard for `[ai] default` (grok, claude, or codex) |
 | `l` | in those pickers, query empty: dashboard for `[ai] local` |
-| `t` | in the action palette, query empty: plain tmux session for `$PWD` |
+| letter | in the action palette, query empty: run the action with that key. `t` is a plain tmux session unless that key is already set |
+| Esc | on a later picker: back to the previous one. On the first picker: close |
 
 The dashboard is a tmux window. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. Two shells sit on the right. Inside tmux it is a new window. Outside tmux it is session `sjmp-<directory>`. If tmux is not installed, sjmp says so and stops.
 
-`M-x` or `M-Enter`, then `t`, opens a plain tmux session for the current directory. No agent and no extra panes. Outside tmux this attaches to `sjmp-<directory>` or creates it. Inside tmux it is a new window in the current session. An action whose key is already `t` replaces that default. `sjmp_tmux '{path}'` still asks for a favorite, then opens that directory.
+`M-x` or `M-Enter`, then a letter, runs the action with that key while the query is empty. The filter matches the key and the label. It does not match the kind word. `t` opens a plain tmux session for the current directory. No agent and no extra panes. That default row is kind `session`. Outside tmux this attaches to `sjmp-<directory>` or creates it. Inside tmux it is a new window in the current session. An action whose key is already `t` replaces that default. `sjmp_tmux '{path}'` still asks for a favorite, then opens that directory.
 
-`M-x` or `M-Enter`, then `a`, opens the default dashboard when the action is `sjmp_tmux_dash '{path}'`. `M-x` or `M-Enter`, then `l`, opens the local one when the action is `sjmp_tmux_dash '{path}' local`. `SJMP_AGENT_CMD` overrides that default for one shell, not `l`. Other actions are unchanged: Enter there still runs the action. Inside tmux, a root binding on `M-Enter` runs first, so `M-x` is the actions chord that reaches the shell there.
+`M-Enter` or `M-x`, then `a`, asks for a place and then opens the default dashboard when the action is `sjmp_tmux_dash '{path}'`. `Esc` there returns to the action palette. `Esc` on that palette closes it. `M-Enter` or `M-x`, then `l`, opens the local one when the action is `sjmp_tmux_dash '{path}' local`. `SJMP_AGENT_CMD` overrides that default for one shell, not `l`. Other actions are unchanged: Enter there still runs the highlighted action. Inside tmux, a root binding on `M-Enter` runs first. This config leaves `M-Enter` unbound, so it reaches the shell. In vterm, `M-Enter` is the actions chord. `M-x` stays Emacs.
 
 `pin --keys` refuses `p` / `P` / `x` (sjmp chords), `b` / `f` / `d` / `y`
 (readline), and letters already used by another favorite.

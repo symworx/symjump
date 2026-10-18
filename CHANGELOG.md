@@ -15,7 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The bash hook also binds `M-Enter` to the action palette (`\e\C-m` and `\e\C-j`), same as `M-x`. The hook stays off when `INSIDE_EMACS` is set. A tmux root binding on `M-Enter` still wins over the shell.
+- `Esc` on a later sjmp picker returns to the previous one. `Esc` on the first picker closes it. After `M-Enter` then `a`, `Esc` on the place list returns to the action palette.
+- The bash hook calls `bind` only in an interactive shell. `toolbox run` and `bash -c` no longer warn `line editing not enabled`.
+- In the action palette, a letter runs the action with that key while the query is empty. The filter matches the key and the label. The built-in plain tmux row is kind `session`, so `a` does not match it through the word `agent`.
+- The bash hook also binds `M-Enter` to the action palette (`\e\C-m` and `\e\C-j`), same as `M-x`. The hook stays off when `INSIDE_EMACS` is set to something other than `vterm`. A tmux root binding on `M-Enter` still wins over the shell.
+- The hook runs in Emacs vterm. `M-Enter` is the actions chord there. `M-x` stays Emacs because vterm does not send it.
 
 ## [0.2.0] - 2026-10-16
 
