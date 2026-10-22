@@ -32,6 +32,9 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains("--nth=2,3"));
     assert!(h.contains("session)"));
     assert!(h.contains("sjmp_tmux()"));
+    assert!(h.contains("sjmp_tmux_show"));
+    assert!(h.contains("switch-client -t"));
+    assert!(!h.contains("new-window"));
     assert!(h.contains("Install tmux, then press t again."));
     assert!(h.contains("t: tmux session"));
     assert!(h.contains("sjmp_fzf 'fav> '"));
@@ -56,6 +59,36 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains("exec ollama run"));
     assert!(!h.contains("printf 'g\\tgrok-build"));
     assert!(!h.contains(r#"jmp w"#));
+}
+
+#[test]
+fn hook_parses_as_bash() {
+    let cfg = Config {
+        favorites: vec![Favorite {
+            label: "worx".into(),
+            path: "~/worx".into(),
+            keys: Some("w".into()),
+        }],
+        ..Config::default()
+    };
+    let h = bash_hook(&cfg);
+    let path = std::env::temp_dir().join("sjmp-hook-syntax.sh");
+    std::fs::write(&path, &h).unwrap();
+    let status = std::process::Command::new("bash")
+        .arg("-n")
+        .arg(&path)
+        .status()
+        .expect("bash");
+    let _ = std::fs::remove_file(&path);
+    assert!(status.success(), "generated hook failed bash -n");
+    let fi_at = h.rfind("\nfi\n").expect("closing fi");
+    let fav_at = h
+        .find(r#"bind '"\ew": "\C-ujmp w\C-m"'"#)
+        .expect("favorite bind");
+    assert!(
+        fav_at < fi_at,
+        "favorite bind must stay inside the interactive if"
+    );
 }
 
 #[test]
