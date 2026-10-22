@@ -11,10 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bare `[ai] local = "ollama"` lists models in the dashboard pane and runs `ollama run` only after a pick. `ollama run <name>` still starts that model. The sample `M-x` action `l` is `sjmp_tmux_dash '{path}' local`.
 
-- `M-x` or `M-Enter`, then `t`, opens a plain tmux session for the current directory (`sjmp_tmux`). Inside tmux this is a new window. Outside tmux it attaches to `sjmp-<directory>` or creates that session. An action with key `t` replaces this default.
+- `M-x` or `M-Enter`, then `t`, opens a plain tmux session for the current directory (`sjmp_tmux`). The session is `sjmp-<directory>`. If it exists, sjmp switches to it. An action with key `t` replaces this default.
 
 ### Changed
 
+- `sjmp_tmux` and the agent dashboard no longer add a window to the current session. Each directory is session `sjmp-<directory>`. Opening it again switches to that session.
 - `Esc` on a later sjmp picker returns to the previous one. `Esc` on the first picker closes it. After `M-Enter` then `a`, `Esc` on the place list returns to the action palette.
 - The bash hook calls `bind` only in an interactive shell. `toolbox run` and `bash -c` no longer warn `line editing not enabled`.
 - In the action palette, a letter runs the action with that key while the query is empty. The filter matches the key and the label. The built-in plain tmux row is kind `session`, so `a` does not match it through the word `agent`.

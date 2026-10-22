@@ -129,6 +129,16 @@ sjmp_tmux_layout() {
   tmux select-pane -t "$bottom" -T shell
   tmux select-pane -t "$left"
 }
+# Show a session. Inside tmux, switch the client. Outside, attach when
+# stdout is a tty. Never adds a window.
+sjmp_tmux_show() {
+  local session="$1"
+  if [ -n "${TMUX:-}" ]; then
+    tmux switch-client -t "=$session"
+  elif [ -t 1 ]; then
+    tmux attach-session -t "=$session"
+  fi
+}
 sjmp_tmux_dash() {
   local path="$1" agent slug session target pane_cmd title
   [ -d "$path" ] || { echo "sjmp: not a directory: $path" >&2; return 1; }
@@ -156,27 +166,20 @@ sjmp_tmux_dash() {
   # Tag the window as an agent session for the status bar. The EXIT trap
   # clears @agent when the pane's shell exits, even after exec bash.
   pane_cmd="bash -c $(printf '%q' "trap 'tmux set-window-option -t \"\$TMUX_PANE\" @agent \"\"' EXIT; $pane_cmd")"
-  if [ -n "${TMUX:-}" ]; then
-    target="$(tmux new-window -P -F '#{session_name}:#{window_index}' -c "$path" -n "$slug" "$pane_cmd")" || return
-    tmux set-window-option -t "$target" @agent 1
-    sjmp_tmux_layout "$target" "$path" "$title"
-  else
-    if tmux has-session -t "=$session" 2>/dev/null; then
-      target="$(tmux new-window -d -P -F '#{session_name}:#{window_index}' -t "${session}:" -c "$path" -n "$slug" "$pane_cmd")" || return
-    else
-      tmux new-session -d -s "$session" -n "$slug" -c "$path" "$pane_cmd" || return
-      target="$(tmux display-message -p -t "${session}:" '#{session_name}:#{window_index}')" || return
-    fi
-    tmux set-window-option -t "$target" @agent 1
-    sjmp_tmux_layout "$target" "$path" "$title"
-    if [ -t 1 ]; then
-      tmux attach-session -t "=$session"
-    fi
+  # One session per directory. A second open switches to it.
+  if tmux has-session -t "=$session" 2>/dev/null; then
+    sjmp_tmux_show "$session"
+    return
   fi
+  tmux new-session -d -s "$session" -n "$slug" -c "$path" "$pane_cmd" || return
+  target="$(tmux display-message -p -t "${session}:" '#{session_name}:#{window_index}')" || return
+  tmux set-window-option -t "$target" @agent 1
+  sjmp_tmux_layout "$target" "$path" "$title"
+  sjmp_tmux_show "$session"
 }
 # Plain session for one directory. No agent and no extra panes.
-# Inside tmux: a new window in the current session. Outside: attach to
-# sjmp-<directory>, or create that session.
+# Session name is sjmp-<directory>. If it exists, switch to it.
+# A second open does not add a window.
 sjmp_tmux() {
   local path slug session
   path="${1:-$PWD}"
@@ -188,17 +191,10 @@ sjmp_tmux() {
   fi
   slug="$(sjmp_tmux_slug "$path")"
   session="sjmp-${slug}"
-  if [ -n "${TMUX:-}" ]; then
-    tmux new-window -c "$path" -n "$slug"
-  elif tmux has-session -t "=$session" 2>/dev/null; then
-    if [ -t 1 ]; then
-      tmux attach-session -t "=$session"
-    fi
-  elif [ -t 1 ]; then
-    tmux new-session -s "$session" -n "$slug" -c "$path"
-  else
-    tmux new-session -d -s "$session" -n "$slug" -c "$path"
+  if ! tmux has-session -t "=$session" 2>/dev/null; then
+    tmux new-session -d -s "$session" -n "$slug" -c "$path" || return
   fi
+  sjmp_tmux_show "$session"
 }
 jmp() {
   if [ $# -eq 0 ]; then
@@ -306,4 +302,4 @@ if [ -n "${BASH_VERSION:-}" ] && case $- in *i*) true ;; *) false ;; esac; then
   # Terminals send Enter as CR or LF.
   bind '"\e\C-m": "\C-usjmp_actions\C-m"'
   bind '"\e\C-j": "\C-usjmp_actions\C-m"'
-}
+
