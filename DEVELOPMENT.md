@@ -15,7 +15,7 @@ How to work in **symjump**. For agent rules see [AGENTS.md](AGENTS.md). For prod
 # Host has no rustup. Build/install from the rust toolbox onto ~/.local/bin:
 toolbox run -c dev-rust cargo install --path crates/sjmp --root "$HOME/.local"
 sjmp                       # first run writes ~/.config/symjump/favorites.toml
-eval "$(sjmp init bash)"   # skip automatically when INSIDE_EMACS
+eval "$(sjmp init bash)"   # runs in a normal shell and in vterm; other Emacs shells skip
 ```
 
 ## Crates
@@ -67,8 +67,8 @@ member versions, and the changelog tag / Unreleased compare links. Fill in
 a consistency check only.
 
 `CHANGELOG.md` must have a `## [X.Y.Z]` section. Tag `vX.Y.Z` on `worx` (must
-match `[workspace.package] version`). Then publish to crates.io, libraries
-first:
+match `[workspace.package] version`). `.github/workflows/release.yml` then
+publishes to crates.io, libraries first, and opens the GitHub Release:
 
 ```bash
 cargo publish -p symjump-config
@@ -76,8 +76,18 @@ cargo publish -p symjump-core
 cargo publish -p sjmp
 ```
 
-GitHub Environment `crates-io` holds `CARGO_REGISTRY_TOKEN` for a later
-tag-triggered workflow. Until then, publish by hand after the tag.
+GitHub Environment `crates-io` holds `CARGO_REGISTRY_TOKEN`. A push to
+`release/**`, a pull request into `main`, or `workflow_dispatch` runs the
+same checks and does not publish.
+
+`.github/workflows/ci.yml` runs on push and pull request to `worx` and
+`develop`:
+
+```bash
+cargo +nightly fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
 
 From a checkout without crates.io:
 

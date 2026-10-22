@@ -5,6 +5,10 @@ leader = "M-p"
 kids = "M-P"
 actions = "M-x"
 
+[ai]
+default = "grok"
+local = "ollama"
+
 [[favorites]]
 label = "src"
 path = "~/src"
@@ -15,10 +19,27 @@ label = "symworx"
 path = "~/src/symworx"
 keys = "s"
 
+# Key t replaces the built-in session row (plain tmux for the current directory).
+# Use "sjmp_tmux '{path}'" to pick a favorite first.
+[[actions.agent]]
+label = "tmux"
+keys = "t"
+cmd = "sjmp_tmux"
+
 [[actions.toolbox]]
 label = "python"
 name = "dev-python"
 keys = "p"
+
+[[actions.agent]]
+label = "agent"
+keys = "a"
+cmd = "sjmp_tmux_dash '{path}'"
+
+[[actions.agent]]
+label = "ollama"
+keys = "l"
+cmd = "sjmp_tmux_dash '{path}' local"
 
 [[actions.agent]]
 label = "grok-build"
