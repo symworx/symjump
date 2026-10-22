@@ -85,7 +85,10 @@ fn hook_parses_as_bash() {
     let fav_at = h
         .find(r#"bind '"\ew": "\C-ujmp w\C-m"'"#)
         .expect("favorite bind");
-    assert!(fav_at < fi_at, "favorite bind must stay inside the interactive if");
+    assert!(
+        fav_at < fi_at,
+        "favorite bind must stay inside the interactive if"
+    );
 }
 
 #[test]
