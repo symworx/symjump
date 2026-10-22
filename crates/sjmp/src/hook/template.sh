@@ -153,8 +153,12 @@ sjmp_tmux_dash() {
   slug="$(sjmp_tmux_slug "$path")"
   session="sjmp-${slug}"
   pane_cmd="${agent}; exec bash"
+  # Tag the window as an agent session for the status bar. The EXIT trap
+  # clears @agent when the pane's shell exits, even after exec bash.
+  pane_cmd="bash -c $(printf '%q' "trap 'tmux set-window-option -t \"\$TMUX_PANE\" @agent \"\"' EXIT; $pane_cmd")"
   if [ -n "${TMUX:-}" ]; then
     target="$(tmux new-window -P -F '#{session_name}:#{window_index}' -c "$path" -n "$slug" "$pane_cmd")" || return
+    tmux set-window-option -t "$target" @agent 1
     sjmp_tmux_layout "$target" "$path" "$title"
   else
     if tmux has-session -t "=$session" 2>/dev/null; then
@@ -163,6 +167,7 @@ sjmp_tmux_dash() {
       tmux new-session -d -s "$session" -n "$slug" -c "$path" "$pane_cmd" || return
       target="$(tmux display-message -p -t "${session}:" '#{session_name}:#{window_index}')" || return
     fi
+    tmux set-window-option -t "$target" @agent 1
     sjmp_tmux_layout "$target" "$path" "$title"
     if [ -t 1 ]; then
       tmux attach-session -t "=$session"
@@ -301,3 +306,4 @@ if [ -n "${BASH_VERSION:-}" ] && case $- in *i*) true ;; *) false ;; esac; then
   # Terminals send Enter as CR or LF.
   bind '"\e\C-m": "\C-usjmp_actions\C-m"'
   bind '"\e\C-j": "\C-usjmp_actions\C-m"'
+}
