@@ -22,7 +22,7 @@ dependencies = [
 
 [[package]]
 name = "sjmp"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "symjump-config",
  "symjump-core",
@@ -30,14 +30,14 @@ dependencies = [
 
 [[package]]
 name = "symjump-config"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "symjump-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "symjump-config",
  "thiserror",

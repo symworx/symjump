@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed 
+
+## [0.2.1] - 2026-10-23
+
+### Added
+
 - Bare `[ai] local = "ollama"` lists models in the dashboard pane and runs `ollama run` only after a pick. `ollama run <name>` still starts that model. The sample `M-x` action `l` is `sjmp_tmux_dash '{path}' local`.
 
 - `M-x` or `M-Enter`, then `t`, opens a plain tmux session for the current directory (`sjmp_tmux`). The session is `sjmp-<directory>`. If it exists, sjmp switches to it. An action with key `t` replaces this default.
@@ -38,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `action rm`, `toolbox`, bash hook + `jmp`.
 - Apache-2.0 `LICENSE`.
 
-[Unreleased]: https://github.com/symworx/symjump/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/symworx/symjump/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/symworx/symjump/releases/tag/v0.2.1
 [0.2.0]: https://github.com/symworx/symjump/releases/tag/v0.2.0
 [0.1.0]: https://github.com/symworx/symjump/releases/tag/v0.1.0
