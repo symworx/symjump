@@ -58,7 +58,7 @@ Commands:
   action                    list, add, run, or remove actions
   exec <fav|path> --cmd C   print an exec line
   toolbox list              list toolbox actions
-  toolbox enter <q>         print toolbox enter command
+  toolbox enter <q>         print enter command (toolbox or distrobox)
 
 Options:
   --config PATH             config file

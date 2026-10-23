@@ -23,6 +23,26 @@ fn scratch(name: &str) -> std::path::PathBuf {
     p
 }
 
+/// Same preference as `sjmp toolbox enter`: toolbox, then distrobox.
+fn enter_backend_on_path() -> Option<&'static str> {
+    fn on_path(cmd: &str) -> bool {
+        Command::new("which")
+            .arg(cmd)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+    }
+    if on_path("toolbox") {
+        Some("toolbox")
+    } else if on_path("distrobox") {
+        Some("distrobox")
+    } else {
+        None
+    }
+}
+
 #[test]
 fn help_menus() {
     let tmp = scratch("help");
@@ -132,10 +152,23 @@ fn jump_list_exec_toolbox() {
         .args(["--config", c, "toolbox", "enter", "p"])
         .output()
         .unwrap();
-    assert_eq!(
-        String::from_utf8_lossy(&tb.stdout).trim(),
-        "toolbox enter dev-python"
-    );
+    match enter_backend_on_path() {
+        Some(name) => {
+            assert!(
+                tb.status.success(),
+                "{}",
+                String::from_utf8_lossy(&tb.stderr)
+            );
+            assert_eq!(
+                String::from_utf8_lossy(&tb.stdout).trim(),
+                format!("{name} enter dev-python")
+            );
+        }
+        None => {
+            assert!(!tb.status.success());
+            assert!(String::from_utf8_lossy(&tb.stderr).contains("neither toolbox nor distrobox"));
+        }
+    }
     let va = bin()
         .args(["--config", c, "action", "agent", "c", "s"])
         .env("HOME", "/home/user")

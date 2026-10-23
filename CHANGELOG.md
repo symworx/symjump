@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `sjmp_tmux` and the agent dashboard no longer add a window to the current session. Each directory is session `sjmp-<directory>`. Opening it again switches to that session.
+- `sjmp_tmux` (plain `t`) does not add a window to the current session. Each directory is session `sjmp-<directory>`. Opening it again switches to that session.
+- The agent dashboard adds a tmux window. Inside tmux the other windows stay. Outside tmux the window is added to `sjmp-<directory>`.
 - `Esc` on a later sjmp picker returns to the previous one. `Esc` on the first picker closes it. After `M-Enter` then `a`, `Esc` on the place list returns to the action palette.
 - The bash hook calls `bind` only in an interactive shell. `toolbox run` and `bash -c` no longer warn `line editing not enabled`.
 - In the action palette, a letter runs the action with that key while the query is empty. The filter matches the key and the label. The built-in plain tmux row is kind `session`, so `a` does not match it through the word `agent`.

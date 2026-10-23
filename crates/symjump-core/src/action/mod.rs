@@ -72,7 +72,15 @@ mod tests {
         let c = cfg();
         assert_eq!(find_agent(&c, "g").unwrap().label, "grok-build");
         assert_eq!(
-            toolbox_enter_cmd(find_toolbox(&c, "p").unwrap()),
+            toolbox_enter_cmd(find_toolbox(&c, "p").unwrap(), "toolbox"),
+            "toolbox enter dev-python"
+        );
+        assert_eq!(
+            toolbox_enter_cmd(find_toolbox(&c, "p").unwrap(), "distrobox"),
+            "distrobox enter dev-python"
+        );
+        assert_eq!(
+            toolbox_enter_cmd(find_toolbox(&c, "p").unwrap(), "other"),
             "toolbox enter dev-python"
         );
         assert_eq!(

@@ -1,5 +1,5 @@
 # symjump
-
+    
 Pinned places and a few actions for a real terminal. Binary: `sjmp`.
 
 Not an emulator, not a project.el replacement, not your git/docker aliases.
@@ -58,9 +58,9 @@ Meta, not Control. The same chords work in a bare terminal, in tmux, and in Emac
 | letter | in the action palette, query empty: run the action with that key. `t` is a plain tmux session unless that key is already set |
 | Esc | on a later picker: back to the previous one. On the first picker: close |
 
-The dashboard is one tmux session, `sjmp-<directory>`. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. Two shells sit on the right. If that session already exists, sjmp switches to it and does not add a window. If tmux is not installed, sjmp says so and stops.
+The dashboard is a tmux window. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. Two shells sit on the right. Inside tmux it is a new window. Outside tmux it is session `sjmp-<directory>`. If tmux is not installed, sjmp says so and stops.
 
-`M-x` or `M-Enter`, then a letter, runs the action with that key while the query is empty. The filter matches the key and the label. It does not match the kind word. `t` opens a plain tmux session for the current directory. No agent and no extra panes. That default row is kind `session`. This switches to `sjmp-<directory>`, or creates that session. It does not add a window to the session you are already in. An action whose key is already `t` replaces that default. `sjmp_tmux '{path}'` still asks for a favorite, then opens that directory.
+`M-x` or `M-Enter`, then a letter, runs the action with that key while the query is empty. The filter matches the key and the label. It does not match the kind word. `t` opens a plain tmux session for the current directory. No agent and no extra panes. That default row is kind `session`. Outside tmux this attaches to `sjmp-<directory>` or creates it. Inside tmux it is a new window in the current session. An action whose key is already `t` replaces that default. `sjmp_tmux '{path}'` still asks for a favorite, then opens that directory.
 
 `M-Enter` or `M-x`, then `a`, asks for a place and then opens the default dashboard when the action is `sjmp_tmux_dash '{path}'`. `Esc` there returns to the action palette. `Esc` on that palette closes it. `M-Enter` or `M-x`, then `l`, opens the local one when the action is `sjmp_tmux_dash '{path}' local`. `SJMP_AGENT_CMD` overrides that default for one shell, not `l`. Other actions are unchanged: Enter there still runs the highlighted action. Inside tmux, a root binding on `M-Enter` runs first. This config leaves `M-Enter` unbound, so it reaches the shell. In vterm, `M-Enter` is the actions chord. `M-x` stays Emacs.
 

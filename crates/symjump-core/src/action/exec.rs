@@ -11,8 +11,14 @@ pub fn render_agent_cmd(action: &AgentAction, path: &Path) -> String {
     action.cmd.replace("{path}", &path.display().to_string())
 }
 
-pub fn toolbox_enter_cmd(action: &ToolboxAction) -> String {
-    format!("toolbox enter {}", action.name)
+/// Build an enter command for a named environment.
+/// `backend` is `toolbox` or `distrobox`. Callers detect which is on `PATH`.
+/// Any other value uses `toolbox`.
+pub fn toolbox_enter_cmd(action: &ToolboxAction, backend: &str) -> String {
+    match backend {
+        "distrobox" => format!("distrobox enter {}", action.name),
+        _ => format!("toolbox enter {}", action.name),
+    }
 }
 
 pub fn exec_line(cmd: &str, path: &Path) -> Result<String, CoreError> {

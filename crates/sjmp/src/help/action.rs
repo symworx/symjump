@@ -4,7 +4,7 @@
 pub fn print() {
     print!(
         "\
-sjmp action — agent and toolbox actions (M-x, M-Enter)
+sjmp action — agent and toolbox/distrobox actions (M-x, M-Enter)
 
 Usage:
   sjmp action list

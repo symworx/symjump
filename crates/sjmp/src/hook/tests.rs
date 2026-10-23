@@ -31,10 +31,13 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains("session  t  tmux  sjmp_tmux"));
     assert!(h.contains("--nth=2,3"));
     assert!(h.contains("session)"));
+    assert!(h.contains("command -v distrobox"));
+    assert!(h.contains("neither toolbox nor distrobox found"));
     assert!(h.contains("sjmp_tmux()"));
     assert!(h.contains("sjmp_tmux_show"));
     assert!(h.contains("switch-client -t"));
-    assert!(!h.contains("new-window"));
+    assert!(h.contains("tmux new-window -P -F"));
+    assert!(h.contains("Other windows stay."));
     assert!(h.contains("Install tmux, then press t again."));
     assert!(h.contains("t: tmux session"));
     assert!(h.contains("sjmp_fzf 'fav> '"));

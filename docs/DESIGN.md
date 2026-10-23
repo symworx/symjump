@@ -76,7 +76,7 @@ Document `alt-sends-escape`.
 
 `[ai] default` is `grok`, `claude`, `codex`, or `local`. `[ai] local` is the command for `l` (`ollama` unless you set another). Bare `ollama` opens a model list in the left pane (`ollama list` through fzf) and runs `ollama run <name>` only after a pick. No model is loaded before that. With no models installed, the pane says so and drops to a shell so you can `ollama pull <name>`. `ollama run <name>` in `[ai] local` starts that model directly. Any other local command is run as written (a vLLM command can use that until it has its own picker). `M-x` or `M-Enter`, then a letter, runs the action with that key while the query is empty. `t` runs `sjmp_tmux` for the current directory when that key is free: one shell, no agent layout. That built-in row is kind `session`. The session name is `sjmp-<directory>`. If that session exists, sjmp switches to it. Otherwise it creates the session. Inside tmux this is `switch-client`, not a new window in the current session. If tmux is missing, sjmp says so and stops. An `[[actions.agent]]` or toolbox entry whose key is `t` replaces this. `cmd = "sjmp_tmux '{path}'"` still picks a favorite first. `M-x` then `a` runs `sjmp_tmux_dash '{path}'`, which uses `default`. `M-x` then `l` runs `sjmp_tmux_dash '{path}' local` when that action is configured. `SJMP_AGENT_CMD` overrides `default` for one shell. It does not change `l`. A new shell picks up a changed `favorites.toml`.
 
-The dashboard is one tmux session, `sjmp-<directory>`, with one window. The left pane runs that agent and leaves a shell when it exits. The right column is two shells. If that session already exists, sjmp switches to it and does not add a window. The current pane's directory changes only on Enter.
+The dashboard opens a new tmux window. The left pane runs that agent and leaves a shell when it exits. The right column is two shells. Inside tmux, the window is added to the current session and the other windows stay. Outside tmux, it is added to session `sjmp-<directory>`, which is created the first time. The current pane's directory changes only on Enter.
 
 `sjmp pin --keys` refuses letters that are already taken:
 
@@ -127,6 +127,11 @@ keys = "p"
 
 A `tb` → `toolbox` alias, if any, stays in the user's shell kit. This repo
 does not ship it.
+
+A `[[actions.toolbox]]` entry works with either `toolbox` or `distrobox`.
+The enter command prefers `toolbox` if it is on `PATH`, otherwise `distrobox`.
+Distrobox already abstracts the underlying runtime (podman or docker), so a
+separate docker enter action is not required for named environments.
 
 ## Git vs kids
 
