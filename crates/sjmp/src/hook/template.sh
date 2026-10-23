@@ -1,6 +1,10 @@
+# Copyright (c) 2026 Nathaniel T. Berry
+# Licensed under the Apache License, Version 2.0.
+#
 # sjmp / symjump
 # Run in a normal shell and in Emacs vterm (INSIDE_EMACS=vterm).
 # comint and other Emacs shells still skip the hook.
+
 case "${INSIDE_EMACS:-}" in
   ""|vterm) ;;
   *) return 0 2>/dev/null || exit 0 ;;
@@ -166,16 +170,22 @@ sjmp_tmux_dash() {
   # Tag the window as an agent session for the status bar. The EXIT trap
   # clears @agent when the pane's shell exits, even after exec bash.
   pane_cmd="bash -c $(printf '%q' "trap 'tmux set-window-option -t \"\$TMUX_PANE\" @agent \"\"' EXIT; $pane_cmd")"
-  # One session per directory. A second open switches to it.
-  if tmux has-session -t "=$session" 2>/dev/null; then
-    sjmp_tmux_show "$session"
-    return
+  # Inside tmux, add a window in the current session. Other windows stay.
+  # Outside, add a window to sjmp-<directory>, creating that session the first time.
+  if [ -n "${TMUX:-}" ]; then
+    target="$(tmux new-window -P -F '#{session_name}:#{window_index}' -c "$path" -n "$slug" "$pane_cmd")" || return
+  elif tmux has-session -t "=$session" 2>/dev/null; then
+    target="$(tmux new-window -d -P -F '#{session_name}:#{window_index}' -t "${session}:" -c "$path" -n "$slug" "$pane_cmd")" || return
+  else
+    tmux new-session -d -s "$session" -n "$slug" -c "$path" "$pane_cmd" || return
+    target="$(tmux display-message -p -t "${session}:" '#{session_name}:#{window_index}')" || return
   fi
-  tmux new-session -d -s "$session" -n "$slug" -c "$path" "$pane_cmd" || return
-  target="$(tmux display-message -p -t "${session}:" '#{session_name}:#{window_index}')" || return
   tmux set-window-option -t "$target" @agent 1
   sjmp_tmux_layout "$target" "$path" "$title"
-  sjmp_tmux_show "$session"
+  if [ -z "${TMUX:-}" ]; then
+    tmux select-window -t "$target"
+    sjmp_tmux_show "$session"
+  fi
 }
 # Plain session for one directory. No agent and no extra panes.
 # Session name is sjmp-<directory>. If it exists, switch to it.
