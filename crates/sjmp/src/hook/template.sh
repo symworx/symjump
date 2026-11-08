@@ -16,9 +16,12 @@ sjmp_fzf() {
   local prompt="${1:-fav> }"
   local height="${2:-40%}"
   local header="${3:-}"
-  local -a hdr=()
+  local expect="${4:-}"
+  local -a hdr=() exp=()
   [ -n "$header" ] && hdr=(--header "$header")
-  fzf --height="$height" --reverse --prompt="$prompt" "${hdr[@]}" \
+  # --expect prints the key on its own first line. Enter and 1-9 leave it empty.
+  [ -n "$expect" ] && exp=(--expect="$expect")
+  fzf --height="$height" --reverse --prompt="$prompt" "${hdr[@]}" "${exp[@]}" \
     --bind '1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept' \
     --bind 'change:transform:[[ -z "{q}" ]] && echo rebind(1,2,3,4,5,6,7,8,9) || echo unbind(1,2,3,4,5,6,7,8,9)'
 }
@@ -76,12 +79,41 @@ sjmp_fzf_action() {
   rm -rf "$dir"
   return "$status"
 }
+# Place list for an agent. Enter returns that pin. Tab lists one level of
+# children (sjmp kids) and returns the chosen child. Esc here aborts (130)
+# so the action palette can come back. Esc on the child list stays here.
+# A pin with no children stays on this list.
 sjmp_pick_fav() {
-  local line key
-  line="$("$sjmp_bin" list | sjmp_fzf 'fav> ' '40%' 'esc: back')" || return
-  [ -z "$line" ] && return
-  key=$(printf '%s\n' "$line" | awk '{print $1}')
-  [ -n "$key" ] && "$sjmp_bin" jump "$key"
+  local out pressed line favkey path kids kid status
+  while true; do
+    out="$("$sjmp_bin" list | sjmp_fzf 'fav> ' '40%' 'enter: this dir   tab: children   esc: back' tab)" || return
+    # fzf --expect: line 1 is "tab" or empty. Line 2 is the favorite row.
+    pressed=$(printf '%s\n' "$out" | awk 'NR==1 { print; exit }')
+    line=$(printf '%s\n' "$out" | awk 'NR==2 { print; exit }')
+    [ -z "$line" ] && return 0
+    favkey=$(printf '%s\n' "$line" | awk '{print $1}')
+    [ -z "$favkey" ] && return 0
+    path="$("$sjmp_bin" jump "$favkey")" || return
+    [ -z "$path" ] && return 0
+    if [ "$pressed" != tab ]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+    status=0
+    kids="$("$sjmp_bin" kids "$path")" || status=$?
+    [ "$status" -ne 0 ] && return "$status"
+    if [ -z "$kids" ]; then
+      echo "sjmp: no children: $path" >&2
+      continue
+    fi
+    status=0
+    kid="$(printf '%s\n' "$kids" | sjmp_fzf 'kid> ' '40%' 'enter: this dir   esc: back')" || status=$?
+    [ "$status" -eq 130 ] && continue
+    [ "$status" -ne 0 ] && return "$status"
+    [ -z "$kid" ] && continue
+    printf '%s\n' "$kid"
+    return 0
+  done
 }
 # Bare `ollama` lists local models in the pane. Nothing is loaded until one is picked.
 # `ollama run <name>` is left alone so an explicit model still starts.

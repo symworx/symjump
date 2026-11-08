@@ -140,3 +140,34 @@ fn hook_explicit_ollama_run_stays_a_command() {
     assert!(h.contains("agent='ollama run llama3'"));
     assert!(h.contains(r#"[ "$agent" = ollama ]"#));
 }
+
+#[test]
+fn hook_agent_place_tab_drills_one_level() {
+    let h = bash_hook(&Config::default());
+    assert!(h.contains("enter: this dir   tab: children   esc: back"));
+    assert!(h.contains("sjmp_fzf 'kid> ' '40%' 'enter: this dir   esc: back'"));
+    assert!(h.contains("sjmp: no children:"));
+    assert_eq!(h.matches("--expect=").count(), 1);
+    assert!(h.contains("enter: cd   a: grok   l: ollama   esc: close"));
+    assert!(!h.contains("tab: children   esc: close"));
+
+    let dir = std::env::temp_dir().join(format!("sjmp-pick-fav-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let hook_path = dir.join("hook.sh");
+    std::fs::write(&hook_path, &h).unwrap();
+    let driver =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook/pick_fav_driver.sh");
+    let out = std::process::Command::new("bash")
+        .arg(&driver)
+        .arg(&hook_path)
+        .output()
+        .expect("bash");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        out.status.success(),
+        "place picker drill driver failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}

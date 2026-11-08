@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- After an agent action asks for a place, Tab lists one level of children of the highlighted favorite (`sjmp kids`). Enter still uses the pin. Esc on the child list returns to the pins. A pin with no children stays on the place list.
+
 ### Changed 
 
 ## [0.2.1] - 2026-10-23
