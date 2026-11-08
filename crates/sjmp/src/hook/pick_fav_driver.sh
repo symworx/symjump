@@ -7,7 +7,7 @@ set -euo pipefail
 
 hook=$1
 pin='/tmp/worx pin'
-child='/tmp/worx pin/symjump'
+child='/tmp/worx pin/child proj'
 row='w  worx  /tmp/worx pin'
 
 root=$(mktemp -d)
@@ -41,7 +41,15 @@ case "$1" in
     if [ "${SJMP_KIDS_EMPTY:-0}" = 1 ]; then
       exit 0
     fi
-    printf '%s\n' '/tmp/worx pin/symjump' '/tmp/worx pin/other'
+    if [ "${SJMP_KIDS_MANY:-0}" = 1 ]; then
+      i=1
+      while [ "$i" -le 12 ]; do
+        printf '%s\n' "/tmp/worx pin/c$(printf '%02d' "$i")"
+        i=$((i + 1))
+      done
+      exit 0
+    fi
+    printf '%s\n' '/tmp/worx pin/child proj' '/tmp/worx pin/other'
     ;;
   *)
     echo "unexpected sjmp: $*" >&2
@@ -84,11 +92,16 @@ has_arg() {
   grep -F -x -q -- "$2" "$fake/fzf-args-$1"
 }
 
+has_substr() {
+  grep -F -q -- "$2" "$fake/fzf-args-$1"
+}
+
 new_case() {
   rm -rf "$fake"
   mkdir -p "$fake"
   SJMP_KIDS_EMPTY=0
   SJMP_KIDS_RC=0
+  SJMP_KIDS_MANY=0
   SJMP_JUMP_RC=0
 }
 
@@ -98,6 +111,7 @@ run_pick() {
     SJMP_FAKE="$fake" \
     SJMP_KIDS_EMPTY="$SJMP_KIDS_EMPTY" \
     SJMP_KIDS_RC="$SJMP_KIDS_RC" \
+    SJMP_KIDS_MANY="$SJMP_KIDS_MANY" \
     SJMP_JUMP_RC="$SJMP_JUMP_RC" \
     bash --noprofile --norc -c '
       source "$1"
@@ -121,11 +135,11 @@ has_arg 1 '--expect=tab' || fail "enter picker missing --expect=tab"
 has_arg 1 'enter: this dir   tab: children   esc: back' || fail "enter header"
 [ ! -e "$fake/fzf-args-2" ] || fail "enter opened a second picker"
 
-# Tab returns the child. The path stays one argument. The child picker
-# does not use --expect, so Enter there is the path itself.
+# Tab returns the child. The number and the name are stripped. A space in
+# the child name stays in the path. Nine or fewer rows bind 1-9.
 new_case
 printf 'tab\n%s\n' "$row" > "$fake/out-1"
-printf '%s\n' "$child" > "$fake/out-2"
+printf '%s\n' $'1\tchild proj\t/tmp/worx pin/child proj' > "$fake/out-2"
 run_pick
 assert_file "$fake/stdout" "$child" "tab stdout"
 assert_file "$fake/rc" "0" "tab rc"
@@ -135,11 +149,31 @@ assert_file "$fake/kids-argc" "2" "kids argc"
 assert_file "$fake/kids-path" "$pin" "kids path"
 has_arg 1 '--expect=tab' || fail "tab fav picker missing --expect"
 has_arg 2 '--prompt=kid> ' || fail "child prompt"
-has_arg 2 'enter: this dir   esc: back' || fail "child header"
+has_arg 2 '1-9: that row   enter: this dir   esc: back' || fail "child header"
+has_arg 2 '--exact' || fail "child picker missing --exact"
+has_arg 2 '--nth=1,2' || fail "child picker missing --nth"
+has_arg 2 '--with-nth=1,2' || fail "child picker missing --with-nth"
+has_arg 2 $'--delimiter=\t' || fail "child picker missing tab delimiter"
+has_substr 2 'pos(1)+accept' || fail "short child list did not bind 1-9"
 if has_arg 2 '--expect=tab'; then
   fail "child picker must not use --expect"
 fi
-assert_file "$fake/fzf-in-2" $'/tmp/worx pin/symjump\n/tmp/worx pin/other' "kids lines"
+assert_file "$fake/fzf-in-2" $'1\tchild proj\t/tmp/worx pin/child proj\n2\tother\t/tmp/worx pin/other' "kids lines"
+
+# Ten or more rows do not bind digits. Typing 10 selects that row.
+new_case
+SJMP_KIDS_MANY=1
+printf 'tab\n%s\n' "$row" > "$fake/out-1"
+printf '%s\n' $'10\tc10\t/tmp/worx pin/c10' > "$fake/out-2"
+run_pick
+assert_file "$fake/stdout" "/tmp/worx pin/c10" "many stdout"
+assert_file "$fake/rc" "0" "many rc"
+has_arg 2 'number or name, then enter   esc: back' || fail "long child header"
+if has_substr 2 'pos(1)+accept'; then
+  fail "long child list bound 1-9"
+fi
+many=$(i=1; while [ "$i" -le 12 ]; do printf '%d\tc%02d\t/tmp/worx pin/c%02d\n' "$i" "$i" "$i"; i=$((i + 1)); done)
+assert_file "$fake/fzf-in-2" "${many%$'\n'}" "many rows"
 
 # No children: stay on the place list. The next Enter uses the pin.
 new_case
