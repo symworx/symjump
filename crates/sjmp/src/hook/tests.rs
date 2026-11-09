@@ -144,13 +144,13 @@ fn hook_explicit_ollama_run_stays_a_command() {
 #[test]
 fn hook_dashboard_sizes_come_from_config() {
     let h = bash_hook(&Config::default());
-    assert!(h.contains("sjmp_dash_sizes"));
-    assert!(h.contains("config show"));
-    assert!(h.contains("-l \"$right_l\""));
-    assert!(h.contains("-l \"$bottom_l\""));
+    assert!(h.contains("sjmp_layout_fetch"));
+    assert!(h.contains("config layout"));
+    assert!(h.contains("sjmp_share_cells"));
+    assert!(h.contains("66 0"));
+    assert!(h.contains("34 1 50 50"));
+    assert!(!h.contains("sjmp_dash_sizes"));
     assert!(!h.contains("-l 34%"));
-    assert!(h.contains("right_l=34%"));
-    assert!(h.contains("bottom_l=50%"));
 
     let dir = std::env::temp_dir().join(format!("sjmp-dash-sizes-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

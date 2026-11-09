@@ -4,26 +4,32 @@
 pub fn print() {
     print!(
         "\
-sjmp config — dashboard split sizes
+sjmp config — dashboard layout
 
 Usage:
   sjmp config
   sjmp config show
-  sjmp config [--right SIZE] [--bottom SIZE]
+  sjmp config layout
+  sjmp config --sizes RATIO --secondary RATIO|--secondary none ...
+             [--direction vertical|horizontal]
 
-The dashboard is one agent pane on the left and two shells in the right column.
-right is that column's width. bottom is how much of the column the lower shell takes.
-Enter during the walk keeps the current size.
-A size is 1-99% or a cell count from 1 to 9999.
-The layout reads these when the dashboard opens.
+The walk asks for the primary split, how many splits, a secondary split on
+each pane, then the percentages.
+
+vertical is left | right. horizontal is top / bottom.
+0 primary splits is one pane. 1 is two panes. 2 is three. 3 is four.
+A secondary split cuts that pane the other way. none means that pane stays whole.
+Percents belong to that split and sum to 100, such as 60/40 or 50/50.
+The first pane keeps the agent. The others are shells.
+The layout is read when the dashboard opens.
 
 Pins stay on sjmp pin and sjmp unpin.
 
 Examples:
   sjmp config
   sjmp config show
-  sjmp config --right 40% --bottom 30%
-  sjmp config --right 40
+  sjmp config --sizes 60/40 --secondary 50/50 --secondary none
+  sjmp config --direction horizontal --sizes 70/30 --secondary none --secondary 40/60
 "
     );
 }

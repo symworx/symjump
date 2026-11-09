@@ -18,7 +18,7 @@
 - [x] Bind `M-p` and **`M-x`** outside Emacs; also run the hook in vterm (`INSIDE_EMACS=vterm`), where actions are `M-Enter`
 - [x] fzf picker (basic)
 - [x] `sjmp exec` / `sjmp action` / `action add` / `action rm` / `sjmp toolbox`
-- [x] `sjmp config` sets `[dashboard]` `right` and `bottom`
+- [x] `sjmp config` sets the `[dashboard]` direction, split counts, and percents
 
 ## 2. Hook completeness
 

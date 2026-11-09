@@ -46,6 +46,7 @@ fn parse_config(s: &str) -> Result<Config, ConfigError> {
                     cmd: String::new(),
                     keys: None,
                 }),
+                Section::DashPane => cfg.dashboard.begin_pane(),
                 _ => {}
             }
             continue;
@@ -53,6 +54,7 @@ fn parse_config(s: &str) -> Result<Config, ConfigError> {
         let (key, val) = lex::parse_kv(line, line_no)?;
         apply::apply_kv(&mut cfg, section, &key, val, line_no)?;
     }
+    cfg.dashboard.normalize().map_err(ConfigError::Parse)?;
     cfg.ai.command()?;
     cfg.ai.local_command()?;
     Ok(cfg)
@@ -109,8 +111,7 @@ cmd = "grok"
         let c = Config::parse_str("").unwrap();
         assert_eq!(c.keys.leader, "M-p");
         assert_eq!(c.ai.command().unwrap(), "grok");
-        assert_eq!(c.dashboard.right, "34%");
-        assert_eq!(c.dashboard.bottom, "50%");
+        assert_eq!(c.dashboard.layout(), "vertical\n66 0\n34 1 50 50\n");
         assert!(c.favorites.is_empty());
     }
 
@@ -126,20 +127,50 @@ cmd = "grok"
     }
 
     #[test]
-    fn dashboard_sizes_round_trip() {
-        let raw = "[dashboard]\nright = \"40%\"\nbottom = 12\n";
+    fn dashboard_layout_round_trip() {
+        let raw = "\
+[dashboard]
+direction = \"horizontal\"
+
+[[dashboard.pane]]
+size = 60
+sub = \"50/50\"
+
+[[dashboard.pane]]
+size = 40
+";
         let c = Config::parse_str(raw).unwrap();
-        assert_eq!(c.dashboard.right, "40%");
-        assert_eq!(c.dashboard.bottom, "12");
-        let only_right = Config::parse_str("[dashboard]\nright = \"20%\"\n").unwrap();
-        assert_eq!(only_right.dashboard.right, "20%");
-        assert_eq!(only_right.dashboard.bottom, "50%");
+        assert_eq!(
+            c.dashboard.summary(),
+            "horizontal 60/40\n  top 50/50\n  bottom\n"
+        );
         let again = Config::parse_str(&c.to_toml().unwrap()).unwrap();
         assert_eq!(again.dashboard, c.dashboard);
-        assert!(c.to_toml().unwrap().contains("right = \"40%\""));
+        assert!(c.to_toml().unwrap().contains("direction = \"horizontal\""));
+        assert!(!c.to_toml().unwrap().contains("right ="));
+
+        let legacy = Config::parse_str("[dashboard]\nright = \"34%\"\nbottom = \"50%\"\n").unwrap();
+        assert_eq!(legacy.dashboard, Config::default().dashboard);
+        let right_only = Config::parse_str("[dashboard]\nright = \"40%\"\n").unwrap();
+        assert_eq!(right_only.dashboard.panes[0].size, 60);
+        assert_eq!(right_only.dashboard.panes[1].subs, vec![50, 50]);
+        let bare = Config::parse_str("[dashboard]\nright = \"30\"\nbottom = \"50\"\n").unwrap();
+        assert_eq!(bare.dashboard.panes[0].size, 70);
+        assert_eq!(bare.dashboard.panes[1].size, 30);
+        assert_eq!(bare.dashboard.panes[1].subs, vec![50, 50]);
+        let bare_int = Config::parse_str("[dashboard]\nright = 34\n").unwrap();
+        assert_eq!(bare_int.dashboard, Config::default().dashboard);
         assert!(Config::parse_str("[dashboard]\nright = \"100%\"\n").is_err());
-        assert!(Config::parse_str("[dashboard]\nright = \"34%;x\"\n").is_err());
+        assert!(Config::parse_str("[dashboard]\nright = \"120\"\n").is_err());
         assert!(Config::parse_str("[dashboard]\nwide = \"10%\"\n").is_err());
+        assert!(
+            Config::parse_str("[dashboard]\nright = \"34%\"\n\n[[dashboard.pane]]\nsize = 100\n")
+                .is_err()
+        );
+        assert!(
+            Config::parse_str("[[dashboard.pane]]\nsize = 60\n\n[[dashboard.pane]]\nsize = 50\n")
+                .is_err()
+        );
     }
 
     #[test]

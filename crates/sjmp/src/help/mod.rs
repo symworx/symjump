@@ -19,7 +19,8 @@ pub fn wants_help(args: &[String], start: usize) -> bool {
             while i < args.len() {
                 match args[i].as_str() {
                     "-h" | "--help" => return true,
-                    "--label" | "--keys" | "--cmd" | "--name" | "--right" | "--bottom" => i += 1,
+                    "--label" | "--keys" | "--cmd" | "--name" | "--direction" | "--sizes"
+                    | "--secondary" => i += 1,
                     _ => {}
                 }
                 i += 1;

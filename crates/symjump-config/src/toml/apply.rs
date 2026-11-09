@@ -3,7 +3,7 @@
 
 use super::lex::{Section, Value};
 use crate::error::ConfigError;
-use crate::model::{Config, Dashboard};
+use crate::model::Config;
 
 pub(super) fn apply_kv(
     cfg: &mut Config,
@@ -47,19 +47,31 @@ pub(super) fn apply_kv(
             }
         }
         Section::Dashboard => {
-            if key != "right" && key != "bottom" {
-                return Err(bad());
+            let fail = |msg: String| ConfigError::Parse(format!("line {line_no}: {msg}"));
+            match (key, val) {
+                ("direction", Value::Str(s)) => cfg.dashboard.set_direction(&s).map_err(fail)?,
+                ("right", Value::Str(s)) => cfg.dashboard.set_legacy_right(&s).map_err(fail)?,
+                ("bottom", Value::Str(s)) => cfg.dashboard.set_legacy_bottom(&s).map_err(fail)?,
+                ("right", Value::Int(n)) => cfg
+                    .dashboard
+                    .set_legacy_right(&n.to_string())
+                    .map_err(fail)?,
+                ("bottom", Value::Int(n)) => cfg
+                    .dashboard
+                    .set_legacy_bottom(&n.to_string())
+                    .map_err(fail)?,
+                _ => return Err(bad()),
             }
-            let raw = match val {
-                Value::Str(s) => s,
-                Value::Int(n) => n.to_string(),
-            };
-            let size = Dashboard::parse_size(&raw)
-                .map_err(|msg| ConfigError::Parse(format!("line {line_no}: {msg}")))?;
-            if key == "right" {
-                cfg.dashboard.right = size;
-            } else {
-                cfg.dashboard.bottom = size;
+        }
+        Section::DashPane => {
+            let fail = |msg: String| ConfigError::Parse(format!("line {line_no}: {msg}"));
+            match (key, val) {
+                ("size", Value::Int(n)) => {
+                    cfg.dashboard.set_pane_size(&n.to_string()).map_err(fail)?
+                }
+                ("size", Value::Str(s)) => cfg.dashboard.set_pane_size(&s).map_err(fail)?,
+                ("sub", Value::Str(s)) => cfg.dashboard.set_pane_sub(&s).map_err(fail)?,
+                _ => return Err(bad()),
             }
         }
         Section::Favorite => {

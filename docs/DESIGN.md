@@ -78,7 +78,7 @@ Document `alt-sends-escape`.
 
 The dashboard opens a new tmux window. The left pane runs that agent and leaves a shell when it exits. The right column is two shells. Inside tmux, the window is added to the current session and the other windows stay. Outside tmux, it is added to session `sjmp-<directory>`, which is created the first time. The current pane's directory changes only on Enter.
 
-`[dashboard]` sets that split. `right` is the shell column width. `bottom` is the lower shell's share of that column. Defaults are `34%` and `50%`. A size is `1`–`99%` or a cell count from `1` to `9999`. `sjmp config` asks for both; Enter keeps the current value. `sjmp config --right 40% --bottom 30%` writes them without a prompt. The layout reads `sjmp config show` when the dashboard opens. Pins stay on `sjmp pin` and `sjmp unpin`.
+`[dashboard]` sets that split. `direction` is `vertical` (left | right) or `horizontal` (top / bottom). Each `[[dashboard.pane]]` is one pane along that split. `size` values sum to 100. `sub` is an optional split the other way, also summing to 100, such as `"50/50"`. The default is `66/34` left | right, with `50/50` on the right pane only. That is the old 34% shell column. `sjmp config` walks the direction, the number of splits (0 is one pane, 1 is two, 2 is three, 3 is four), the secondary count on each pane, then the percentages. Enter keeps the shown value. The first pane keeps the agent. The layout is read when the dashboard opens. Pins stay on `sjmp pin` and `sjmp unpin`.
 
 `sjmp pin --keys` refuses letters that are already taken:
 
@@ -147,8 +147,14 @@ separate docker enter action is not required for named environments.
 
 ```toml
 [dashboard]
-right = "34%"
-bottom = "50%"
+direction = "vertical"
+
+[[dashboard.pane]]
+size = 66
+
+[[dashboard.pane]]
+size = 34
+sub = "50/50"
 ```
 
 See [examples/favorites.toml](../examples/favorites.toml).

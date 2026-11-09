@@ -10,6 +10,7 @@ pub(super) enum Section {
     Frequent,
     Ai,
     Dashboard,
+    DashPane,
     Favorite,
     Toolbox,
     Agent,
@@ -37,6 +38,7 @@ pub(super) fn parse_header(line: &str, line_no: usize) -> Result<Section, Config
     if line.starts_with("[[") && line.ends_with("]]") {
         return match &line[2..line.len() - 2] {
             "favorites" => Ok(Section::Favorite),
+            "dashboard.pane" => Ok(Section::DashPane),
             "actions.toolbox" => Ok(Section::Toolbox),
             "actions.agent" => Ok(Section::Agent),
             _ => Err(err()),

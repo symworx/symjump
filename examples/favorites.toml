@@ -10,8 +10,14 @@ default = "grok"
 local = "ollama"
 
 [dashboard]
-right = "34%"
-bottom = "50%"
+direction = "vertical"
+
+[[dashboard.pane]]
+size = 66
+
+[[dashboard.pane]]
+size = 34
+sub = "50/50"
 
 [[favorites]]
 label = "src"

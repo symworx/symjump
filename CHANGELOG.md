@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `[dashboard]` in `favorites.toml` sets the dashboard split. `right` is the shell column (default `34%`). `bottom` is the lower shell's share of that column (default `50%`). `sjmp config` walks both sizes. `sjmp config --right` and `--bottom` set them without a prompt. The layout reads `sjmp config show` when the dashboard opens.
+- `[dashboard]` sets the dashboard geometry. `direction` is `vertical` (left | right) or `horizontal` (top / bottom). Each `[[dashboard.pane]]` has a `size` along that split, and an optional `sub` the other way. Percents sum to 100. The default is `66/34` with `50/50` on the right pane. `sjmp config` walks the direction, the split counts, and the percentages. The layout is read when the dashboard opens.
 
 - After an agent action asks for a place, Tab lists one level of children of the highlighted favorite (`sjmp kids`). The rows are numbered `01`, `02`, and so on. Type that number or the name and press Enter. `01` selects the first row and `10` selects row 10. Enter still uses the pin. Esc on the child list returns to the pins. A pin with no children stays on the place list.
 

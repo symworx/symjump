@@ -114,7 +114,7 @@ fn help_menus() {
         .unwrap();
     assert!(config_help.status.success());
     let config_s = String::from_utf8_lossy(&config_help.stdout);
-    assert!(config_s.contains("sjmp config --right 40% --bottom 30%"));
+    assert!(config_s.contains("sjmp config --sizes 60/40 --secondary 50/50 --secondary none"));
     assert!(config_s.contains("sjmp pin and sjmp unpin"));
     let config_topic = bin()
         .args(["--config", c, "help", "config"])
@@ -455,11 +455,24 @@ fn dashboard_config_split() {
         "{}",
         String::from_utf8_lossy(&show.stderr)
     );
-    assert_eq!(String::from_utf8_lossy(&show.stdout), "34%\n50%\n");
+    assert_eq!(
+        String::from_utf8_lossy(&show.stdout),
+        "vertical 66/34\n  left\n  right 50/50\n"
+    );
     assert_eq!(fs::read_to_string(&cfg).unwrap(), before);
 
     let set = bin()
-        .args(["--config", c, "config", "--right", "40%", "--bottom", "25"])
+        .args([
+            "--config",
+            c,
+            "config",
+            "--sizes",
+            "60/40",
+            "--secondary",
+            "50/50",
+            "--secondary",
+            "none",
+        ])
         .output()
         .unwrap();
     assert!(
@@ -467,49 +480,89 @@ fn dashboard_config_split() {
         "{}",
         String::from_utf8_lossy(&set.stderr)
     );
-    assert_eq!(String::from_utf8_lossy(&set.stdout), "40%\n25\n");
+    assert_eq!(
+        String::from_utf8_lossy(&set.stdout),
+        "vertical 60/40\n  left 50/50\n  right\n"
+    );
     let body = fs::read_to_string(&cfg).unwrap();
-    assert!(body.contains("right = \"40%\""));
-    assert!(body.contains("bottom = \"25\""));
+    assert!(body.contains("size = 60"));
+    assert!(body.contains("sub = \"50/50\""));
+    assert!(body.contains("size = 40"));
     assert!(body.contains("symworx"));
     assert!(body.contains("dev-python"));
+    let lay = bin()
+        .args(["--config", c, "config", "layout"])
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&lay.stdout),
+        "vertical\n60 1 50 50\n40 0\n"
+    );
 
     let bad = bin()
-        .args(["--config", c, "config", "--right", "100%"])
+        .args([
+            "--config",
+            c,
+            "config",
+            "--sizes",
+            "60/50",
+            "--secondary",
+            "none",
+            "--secondary",
+            "none",
+        ])
         .output()
         .unwrap();
     assert!(!bad.status.success());
-    assert!(String::from_utf8_lossy(&bad.stderr).contains("1-99%"));
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("sum to 100"));
     assert_eq!(fs::read_to_string(&cfg).unwrap(), body);
 
     let inject = bin()
-        .args(["--config", c, "config", "--bottom", "34%;touch"])
+        .args([
+            "--config",
+            c,
+            "config",
+            "--sizes",
+            "60/40;touch",
+            "--secondary",
+            "none",
+            "--secondary",
+            "none",
+        ])
         .output()
         .unwrap();
     assert!(!inject.status.success());
     assert_eq!(fs::read_to_string(&cfg).unwrap(), body);
 
-    let cells = bin()
-        .args(["--config", c, "config", "--bottom", "12"])
+    let short = bin()
+        .args([
+            "--config",
+            c,
+            "config",
+            "--sizes",
+            "60/40",
+            "--secondary",
+            "none",
+        ])
         .output()
         .unwrap();
-    assert!(
-        cells.status.success(),
-        "{}",
-        String::from_utf8_lossy(&cells.stderr)
-    );
-    assert_eq!(String::from_utf8_lossy(&cells.stdout), "40%\n12\n");
+    assert!(!short.status.success());
+    assert!(String::from_utf8_lossy(&short.stderr).contains("one --secondary"));
+    assert_eq!(fs::read_to_string(&cfg).unwrap(), body);
 
-    let walk = output_with_stdin(&["--config", c, "config"], b"\n20\n");
+    let walk = output_with_stdin(&["--config", c, "config"], b"horizontal\n1\n0\n0\n70/30\n");
     assert!(
         walk.status.success(),
         "{}",
         String::from_utf8_lossy(&walk.stderr)
     );
-    assert!(String::from_utf8_lossy(&walk.stderr).contains("right column [40%]"));
-    assert_eq!(String::from_utf8_lossy(&walk.stdout), "40%\n20\n");
-    let walked = fs::read_to_string(&cfg).unwrap();
-    assert!(walked.contains("symworx"));
+    assert!(String::from_utf8_lossy(&walk.stderr).contains("Top-bottom percents [60/40]"));
+    assert!(String::from_utf8_lossy(&walk.stderr).contains("left/right splits on top [1]"));
+    assert_eq!(
+        String::from_utf8_lossy(&walk.stdout),
+        "horizontal 70/30\n  top\n  bottom\n"
+    );
+    assert!(fs::read_to_string(&cfg).unwrap().contains("symworx"));
 
     let kept = fs::read_to_string(&cfg).unwrap();
     let cancel = output_with_stdin(&["--config", c, "config"], b"");
