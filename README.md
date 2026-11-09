@@ -38,7 +38,7 @@ sjmp action rm grok-build
 sjmp action rm agent python   # pass agent|toolbox when the query matches both
 ```
 
-`sjmp --help`, `sjmp pin --help`, and `sjmp action --help` cover the rest.
+`sjmp --help`, `sjmp pin --help`, `sjmp action --help`, and `sjmp config --help` cover the rest.
 A fuller sample is [examples/favorites.toml](examples/favorites.toml).
 
 ## Bindings
@@ -58,16 +58,16 @@ Meta, not Control. The same chords work in a bare terminal, in tmux, and in Emac
 | letter | in the action palette, query empty: run the action with that key. `t` is a plain tmux session unless that key is already set |
 | Esc | on a later picker: back to the previous one. On the first picker: close |
 
-The dashboard is a tmux window. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. Two shells sit on the right. Inside tmux it is a new window. Outside tmux it is session `sjmp-<directory>`. If tmux is not installed, sjmp says so and stops.
+The dashboard is a tmux window. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. The default split is left | right `66/34`, and the right pane is `50/50` top / bottom. `sjmp config` walks a different layout: primary direction, how many splits, a secondary split on each pane, then percentages such as `60/40` or `50/50`. The first pane keeps the agent. The layout is read when the dashboard opens. Inside tmux it is a new window. Outside tmux it is session `sjmp-<directory>`. If tmux is not installed, sjmp says so and stops.
 
 `M-x` or `M-Enter`, then a letter, runs the action with that key while the query is empty. The filter matches the key and the label. It does not match the kind word. `t` opens a plain tmux session for the current directory. No agent and no extra panes. That default row is kind `session`. Outside tmux this attaches to `sjmp-<directory>` or creates it. Inside tmux it is a new window in the current session. An action whose key is already `t` replaces that default. `sjmp_tmux '{path}'` still asks for a favorite, then opens that directory.
 
-`M-Enter` or `M-x`, then `a`, asks for a place and then opens the default dashboard when the action is `sjmp_tmux_dash '{path}'`. `Esc` there returns to the action palette. `Esc` on that palette closes it. `M-Enter` or `M-x`, then `l`, opens the local one when the action is `sjmp_tmux_dash '{path}' local`. `SJMP_AGENT_CMD` overrides that default for one shell, not `l`. Other actions are unchanged: Enter there still runs the highlighted action. Inside tmux, a root binding on `M-Enter` runs first. This config leaves `M-Enter` unbound, so it reaches the shell. In vterm, `M-Enter` is the actions chord. `M-x` stays Emacs.
+`M-Enter` or `M-x`, then `a`, asks for a place and then opens the default dashboard when the action is `sjmp_tmux_dash '{path}'`. On that place list, Enter uses the pin. Tab lists one level of children of the highlighted pin. Each child row is numbered `01`, `02`, and so on. Type that number or the name and press Enter. `01` selects the first row and `10` selects row 10. Enter on a child uses that directory. Esc on the child list returns to the pins. A pin with no children stays on the place list. `Esc` from the place list returns to the action palette. `Esc` on that palette closes it. `M-Enter` or `M-x`, then `l`, opens the local one when the action is `sjmp_tmux_dash '{path}' local`. `SJMP_AGENT_CMD` overrides that default for one shell, not `l`. Other actions are unchanged: Enter there still runs the highlighted action. Inside tmux, a root binding on `M-Enter` runs first. This config leaves `M-Enter` unbound, so it reaches the shell. In vterm, `M-Enter` is the actions chord. `M-x` stays Emacs.
 
 `pin --keys` refuses `p` / `P` / `x` (sjmp chords), `b` / `f` / `d` / `y`
 (readline), and letters already used by another favorite.
 
-The fzf picker accepts numbered picks `1`–`9` only while the query is empty.
+The fzf picker accepts numbered picks `1`–`9` only while the query is empty. The child list is numbered `01`, `02`, and so on, and those digit keys stay in the query.
 
 **SymWorx org standard** (GitHub Flow):
 

@@ -9,6 +9,16 @@ actions = "M-x"
 default = "grok"
 local = "ollama"
 
+[dashboard]
+direction = "vertical"
+
+[[dashboard.pane]]
+size = 66
+
+[[dashboard.pane]]
+size = 34
+sub = "50/50"
+
 [[favorites]]
 label = "src"
 path = "~/src"

@@ -46,6 +46,34 @@ pub(super) fn apply_kv(
                 _ => return Err(bad()),
             }
         }
+        Section::Dashboard => {
+            let fail = |msg: String| ConfigError::Parse(format!("line {line_no}: {msg}"));
+            match (key, val) {
+                ("direction", Value::Str(s)) => cfg.dashboard.set_direction(&s).map_err(fail)?,
+                ("right", Value::Str(s)) => cfg.dashboard.set_legacy_right(&s).map_err(fail)?,
+                ("bottom", Value::Str(s)) => cfg.dashboard.set_legacy_bottom(&s).map_err(fail)?,
+                ("right", Value::Int(n)) => cfg
+                    .dashboard
+                    .set_legacy_right(&n.to_string())
+                    .map_err(fail)?,
+                ("bottom", Value::Int(n)) => cfg
+                    .dashboard
+                    .set_legacy_bottom(&n.to_string())
+                    .map_err(fail)?,
+                _ => return Err(bad()),
+            }
+        }
+        Section::DashPane => {
+            let fail = |msg: String| ConfigError::Parse(format!("line {line_no}: {msg}"));
+            match (key, val) {
+                ("size", Value::Int(n)) => {
+                    cfg.dashboard.set_pane_size(&n.to_string()).map_err(fail)?
+                }
+                ("size", Value::Str(s)) => cfg.dashboard.set_pane_size(&s).map_err(fail)?,
+                ("sub", Value::Str(s)) => cfg.dashboard.set_pane_sub(&s).map_err(fail)?,
+                _ => return Err(bad()),
+            }
+        }
         Section::Favorite => {
             let f = cfg.favorites.last_mut().ok_or_else(bad)?;
             match (key, val) {

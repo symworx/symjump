@@ -18,6 +18,25 @@ pub(super) fn emit_config(cfg: &Config) -> String {
     out.push_str("[ai]\n");
     out.push_str(&format!("default = {}\n", emit_string(&cfg.ai.default)));
     out.push_str(&format!("local = {}\n\n", emit_string(&cfg.ai.local)));
+    out.push_str("[dashboard]\n");
+    out.push_str(&format!(
+        "direction = {}\n\n",
+        emit_string(cfg.dashboard.direction.as_str())
+    ));
+    for pane in &cfg.dashboard.panes {
+        out.push_str("[[dashboard.pane]]\n");
+        out.push_str(&format!("size = {}\n", pane.size));
+        if !pane.subs.is_empty() {
+            let sub = pane
+                .subs
+                .iter()
+                .map(|n| n.to_string())
+                .collect::<Vec<_>>()
+                .join("/");
+            out.push_str(&format!("sub = {}\n", emit_string(&sub)));
+        }
+        out.push('\n');
+    }
     for f in &cfg.favorites {
         out.push_str("[[favorites]]\n");
         out.push_str(&format!("label = {}\n", emit_string(&f.label)));

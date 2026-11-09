@@ -16,9 +16,12 @@ sjmp_fzf() {
   local prompt="${1:-fav> }"
   local height="${2:-40%}"
   local header="${3:-}"
-  local -a hdr=()
+  local expect="${4:-}"
+  local -a hdr=() exp=()
   [ -n "$header" ] && hdr=(--header "$header")
-  fzf --height="$height" --reverse --prompt="$prompt" "${hdr[@]}" \
+  # --expect prints the key on its own first line. Enter and 1-9 leave it empty.
+  [ -n "$expect" ] && exp=(--expect="$expect")
+  fzf --height="$height" --reverse --prompt="$prompt" "${hdr[@]}" "${exp[@]}" \
     --bind '1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept' \
     --bind 'change:transform:[[ -z "{q}" ]] && echo rebind(1,2,3,4,5,6,7,8,9) || echo unbind(1,2,3,4,5,6,7,8,9)'
 }
@@ -76,12 +79,62 @@ sjmp_fzf_action() {
   rm -rf "$dir"
   return "$status"
 }
+# One path per line in, "NN<TAB>name<TAB>path" out. Numbers are always two digits.
+sjmp_kid_rows() {
+  awk '{
+    n = split($0, parts, "/")
+    base = parts[n]
+    if (base == "") base = $0
+    printf "%02d\t%s\t%s\n", NR, base, $0
+  }'
+}
+# Child list. Digits stay in the query so 01 can be typed.
+# --exact makes 01 match row 01 and not row 10.
+sjmp_fzf_kids() {
+  fzf --height=40% --reverse --prompt='kid> ' \
+    --header 'number or name, then enter   esc: back' \
+    --exact --delimiter=$'\t' --nth=1,2 --with-nth=1,2
+}
+# Place list for an agent. Enter returns that pin. Tab lists one level of
+# children (sjmp kids) and returns the chosen child. Esc here aborts (130)
+# so the action palette can come back. Esc on the child list stays here.
+# A pin with no children stays on this list.
 sjmp_pick_fav() {
-  local line key
-  line="$("$sjmp_bin" list | sjmp_fzf 'fav> ' '40%' 'esc: back')" || return
-  [ -z "$line" ] && return
-  key=$(printf '%s\n' "$line" | awk '{print $1}')
-  [ -n "$key" ] && "$sjmp_bin" jump "$key"
+  local out pressed line favkey path kids kid status rows
+  while true; do
+    out="$("$sjmp_bin" list | sjmp_fzf 'fav> ' '40%' 'enter: this dir   tab: children   esc: back' tab)" || return
+    # fzf --expect: line 1 is "tab" or empty. Line 2 is the favorite row.
+    pressed=$(printf '%s\n' "$out" | awk 'NR==1 { print; exit }')
+    line=$(printf '%s\n' "$out" | awk 'NR==2 { print; exit }')
+    [ -z "$line" ] && return 0
+    favkey=$(printf '%s\n' "$line" | awk '{print $1}')
+    [ -z "$favkey" ] && return 0
+    path="$("$sjmp_bin" jump "$favkey")" || return
+    [ -z "$path" ] && return 0
+    if [ "$pressed" != tab ]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+    status=0
+    kids="$("$sjmp_bin" kids "$path")" || status=$?
+    [ "$status" -ne 0 ] && return "$status"
+    if [ -z "$kids" ]; then
+      echo "sjmp: no children: $path" >&2
+      continue
+    fi
+    rows=$(printf '%s\n' "$kids" | sjmp_kid_rows)
+    status=0
+    kid="$(printf '%s\n' "$rows" | sjmp_fzf_kids)" || status=$?
+    [ "$status" -eq 130 ] && continue
+    [ "$status" -ne 0 ] && return "$status"
+    [ -z "$kid" ] && continue
+    # Shortest prefix: drop the number, then the name. The path may contain tabs.
+    kid="${kid#*$'\t'}"
+    kid="${kid#*$'\t'}"
+    [ -z "$kid" ] && continue
+    printf '%s\n' "$kid"
+    return 0
+  done
 }
 # Bare `ollama` lists local models in the pane. Nothing is loaded until one is picked.
 # `ollama run <name>` is left alone so an explicit model still starts.
@@ -118,20 +171,196 @@ sjmp_tmux_slug() {
   [ -n "$slug" ] || slug=work
   printf '%s\n' "$slug"
 }
-sjmp_tmux_layout() {
-  local target="$1" path="$2" agent="$3" left right bottom
-  # pane-base-index may be 1, so .0/.1/.2 do not name these panes.
-  left="$(tmux display-message -p -t "$target" '#{pane_id}')"
-  # Left stays full height. The new pane is the right column, 34% wide.
-  right="$(tmux split-window -t "$left" -h -P -F '#{pane_id}' -c "$path" -l 34%)"
-  # Two shells in that column, one above the other.
-  bottom="$(tmux split-window -t "$right" -v -P -F '#{pane_id}' -c "$path" -l 50%)"
+# Historical dashboard: left | right 66/34, and the right pane split 50/50.
+sjmp_layout_fallback() {
+  printf '%s\n' 'vertical' '66 0' '34 1 50 50'
+}
+# vertical is left | right (tmux -h). horizontal is top / bottom (tmux -v).
+sjmp_layout_ok() {
+  local text="$1" flat rest line i sum size count subsum s
+  local -a lines=() tok=()
+  [ -n "$text" ] || return 1
+  flat="${text//$'\n'/ }"
+  rest="${flat//[abcdefghijklmnopqrstuvwxyz0123456789 ]/}"
+  [ -z "$rest" ] || return 1
+  mapfile -t lines <<< "$text"
+  [ "${lines[0]}" = vertical ] || [ "${lines[0]}" = horizontal ] || return 1
+  [ "${#lines[@]}" -ge 2 ] && [ "${#lines[@]}" -le 5 ] || return 1
+  sum=0
+  for ((i = 1; i < ${#lines[@]}; i++)); do
+    read -r -a tok <<< "${lines[i]}"
+    [ "${#tok[@]}" -ge 2 ] || return 1
+    size="${tok[0]}"
+    count="${tok[1]}"
+    case "$size" in
+      ''|0*|*[!0-9]*) return 1 ;;
+    esac
+    case "$count" in
+      0|1|2|3) ;;
+      *) return 1 ;;
+    esac
+    [ "$size" -ge 1 ] && [ "$size" -le 100 ] || return 1
+    if [ "$count" -eq 0 ]; then
+      [ "${#tok[@]}" -eq 2 ] || return 1
+    else
+      [ "${#tok[@]}" -eq $((2 + count + 1)) ] || return 1
+      subsum=0
+      for ((s = 2; s < ${#tok[@]}; s++)); do
+        case "${tok[s]}" in
+          ''|0*|*[!0-9]*) return 1 ;;
+        esac
+        [ "${tok[s]}" -ge 1 ] && [ "${tok[s]}" -le 99 ] || return 1
+        subsum=$((subsum + tok[s]))
+      done
+      [ "$subsum" -eq 100 ] || return 1
+    fi
+    if [ "${#lines[@]}" -eq 2 ]; then
+      [ "$size" -eq 100 ] || return 1
+    elif [ "$size" -gt 99 ]; then
+      return 1
+    fi
+    sum=$((sum + size))
+  done
+  [ "$sum" -eq 100 ]
+}
+sjmp_layout_fetch() {
+  local raw
+  raw="$("$sjmp_bin" config layout 2>/dev/null)" || raw=""
+  if ! sjmp_layout_ok "$raw"; then
+    raw="$(sjmp_layout_fallback)"
+  fi
+  printf '%s\n' "$raw"
+}
+# Give each percent a whole number of cells. Earlier panes win a tie.
+# The caller passes the usable size, after subtracting one cell per divider.
+sjmp_share_cells() {
+  local total="$1"
+  shift
+  local -a pct=("$@") cells=() rem=()
+  local n=${#pct[@]} i raw c sum leftover best
+  [ "$n" -ge 1 ] && [ "$total" -ge "$n" ] || return 1
+  sum=0
+  for i in "${!pct[@]}"; do
+    raw=$((total * pct[i]))
+    c=$((raw / 100))
+    [ "$c" -ge 1 ] || c=1
+    cells[i]=$c
+    rem[i]=$((raw % 100))
+    sum=$((sum + c))
+  done
+  [ "$sum" -le "$total" ] || return 1
+  leftover=$((total - sum))
+  while [ "$leftover" -gt 0 ]; do
+    best=-1
+    for i in "${!rem[@]}"; do
+      if [ "$best" -lt 0 ] || [ "${rem[i]}" -gt "${rem[best]}" ]; then
+        best=$i
+      fi
+    done
+    if [ "$best" -lt 0 ] || [ "${rem[best]}" -lt 0 ]; then
+      cells[$((n - 1))]=$((cells[n - 1] + leftover))
+      break
+    fi
+    cells[best]=$((cells[best] + 1))
+    rem[best]=-1
+    leftover=$((leftover - 1))
+  done
+  printf '%s\n' "${cells[@]}"
+}
+# tmux -h is left | right. tmux -v is top / bottom.
+sjmp_split_flag() {
+  case "$1" in
+    vertical) printf '%s\n' -h ;;
+    horizontal) printf '%s\n' -v ;;
+    *) return 1 ;;
+  esac
+}
+# Print pane ids in order. The first id is the pane that was split.
+sjmp_split_pane() {
+  local pane="$1" axis="$2" dir="$3"
+  shift 3
+  local -a cells=("$@")
+  local n=${#cells[@]} flag tail remaining i rest new
+  flag="$(sjmp_split_flag "$axis")" || return 1
+  printf '%s\n' "$pane"
+  [ "$n" -le 1 ] && return 0
+  tail="$pane"
+  remaining=0
+  for i in "${cells[@]}"; do
+    remaining=$((remaining + i))
+  done
+  for ((i = 0; i < n - 1; i++)); do
+    rest=$((remaining - cells[i]))
+    [ "$rest" -ge 1 ] || return 1
+    new="$(tmux split-window -t "$tail" "$flag" -P -F '#{pane_id}' -c "$dir" -l "$rest")" || return 1
+    printf '%s\n' "$new"
+    tail="$new"
+    remaining=$rest
+  done
+}
+sjmp_layout_apply() {
+  local target="$1" dir="$2" agent="$3" layout="$4"
+  local axis other total usable n i s sc stotal susable id all agent_pane cells_text ids_text
+  local -a lines=() psizes=() tok=() ids=() cells=() ss=() scells=()
+  mapfile -t lines <<< "$layout"
+  axis="${lines[0]}"
+  if [ "$axis" = vertical ]; then
+    other=horizontal
+  else
+    other=vertical
+  fi
+  n=$((${#lines[@]} - 1))
   tmux set-option -w -t "$target" pane-border-status top
   tmux set-option -w -t "$target" pane-border-format '#{pane_index} #{pane_title}'
-  tmux select-pane -t "$left" -T "${agent%% *}"
-  tmux select-pane -t "$right" -T shell
-  tmux select-pane -t "$bottom" -T shell
-  tmux select-pane -t "$left"
+  # pane-base-index may be 1, so .0/.1/.2 do not name these panes.
+  agent_pane="$(tmux display-message -p -t "$target" '#{pane_id}')"
+  if [ "$axis" = vertical ]; then
+    total="$(tmux display-message -p -t "$agent_pane" '#{pane_width}')"
+  else
+    total="$(tmux display-message -p -t "$agent_pane" '#{pane_height}')"
+  fi
+  for ((i = 0; i < n; i++)); do
+    read -r -a tok <<< "${lines[i + 1]}"
+    psizes[i]="${tok[0]}"
+  done
+  usable=$((total - (n - 1)))
+  cells_text="$(sjmp_share_cells "$usable" "${psizes[@]}")" || return 1
+  mapfile -t cells <<< "$cells_text"
+  ids_text="$(sjmp_split_pane "$agent_pane" "$axis" "$dir" "${cells[@]}")" || return 1
+  mapfile -t ids <<< "$ids_text"
+  for ((i = 0; i < n; i++)); do
+    read -r -a tok <<< "${lines[i + 1]}"
+    sc="${tok[1]}"
+    [ "$sc" -eq 0 ] && continue
+    ss=()
+    for ((s = 2; s < ${#tok[@]}; s++)); do
+      ss+=("${tok[s]}")
+    done
+    if [ "$other" = vertical ]; then
+      stotal="$(tmux display-message -p -t "${ids[i]}" '#{pane_width}')"
+    else
+      stotal="$(tmux display-message -p -t "${ids[i]}" '#{pane_height}')"
+    fi
+    susable=$((stotal - (${#ss[@]} - 1)))
+    cells_text="$(sjmp_share_cells "$susable" "${ss[@]}")" || return 1
+    mapfile -t scells <<< "$cells_text"
+    sjmp_split_pane "${ids[i]}" "$other" "$dir" "${scells[@]}" >/dev/null || return 1
+  done
+  all="$(tmux list-panes -t "$target" -F '#{pane_id}')"
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    if [ "$id" = "$agent_pane" ]; then
+      tmux select-pane -t "$id" -T "${agent%% *}"
+    else
+      tmux select-pane -t "$id" -T shell
+    fi
+  done <<< "$all"
+  tmux select-pane -t "$agent_pane"
+}
+sjmp_tmux_layout() {
+  local target="$1" path="$2" agent="$3" layout
+  layout="$(sjmp_layout_fetch)"
+  sjmp_layout_apply "$target" "$path" "$agent" "$layout"
 }
 # Show a session. Inside tmux, switch the client. Outside, attach when
 # stdout is a tty. Never adds a window.
