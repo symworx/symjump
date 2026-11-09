@@ -79,40 +79,28 @@ sjmp_fzf_action() {
   rm -rf "$dir"
   return "$status"
 }
-# One path per line in, "N<TAB>name<TAB>path" out. fzf shows N and name.
+# One path per line in, "NN<TAB>name<TAB>path" out. Numbers are always two digits.
 sjmp_kid_rows() {
   awk '{
     n = split($0, parts, "/")
     base = parts[n]
     if (base == "") base = $0
-    printf "%d\t%s\t%s\n", NR, base, $0
+    printf "%02d\t%s\t%s\n", NR, base, $0
   }'
 }
-# Child list. Nine or fewer: 1-9 accepts that row while the query is empty.
-# Ten or more: digits stay in the query, so typing 10 does not accept row 1.
-# --exact makes 10 match row 10 and not row 1.
+# Child list. Digits stay in the query so 01 can be typed.
+# --exact makes 01 match row 01 and not row 10.
 sjmp_fzf_kids() {
-  local count="$1"
-  local header binds change
-  local -a extra=()
-  if [ "$count" -le 9 ]; then
-    header='1-9: that row   enter: this dir   esc: back'
-    binds='1:pos(1)+accept,2:pos(2)+accept,3:pos(3)+accept,4:pos(4)+accept,5:pos(5)+accept,6:pos(6)+accept,7:pos(7)+accept,8:pos(8)+accept,9:pos(9)+accept'
-    change='change:transform:[[ -z "{q}" ]] && echo rebind(1,2,3,4,5,6,7,8,9) || echo unbind(1,2,3,4,5,6,7,8,9)'
-    extra=(--bind "$binds" --bind "$change")
-  else
-    header='number or name, then enter   esc: back'
-  fi
-  fzf --height=40% --reverse --prompt='kid> ' --header "$header" \
-    --exact --delimiter=$'\t' --nth=1,2 --with-nth=1,2 \
-    "${extra[@]}"
+  fzf --height=40% --reverse --prompt='kid> ' \
+    --header 'number or name, then enter   esc: back' \
+    --exact --delimiter=$'\t' --nth=1,2 --with-nth=1,2
 }
 # Place list for an agent. Enter returns that pin. Tab lists one level of
 # children (sjmp kids) and returns the chosen child. Esc here aborts (130)
 # so the action palette can come back. Esc on the child list stays here.
 # A pin with no children stays on this list.
 sjmp_pick_fav() {
-  local out pressed line favkey path kids kid status rows count
+  local out pressed line favkey path kids kid status rows
   while true; do
     out="$("$sjmp_bin" list | sjmp_fzf 'fav> ' '40%' 'enter: this dir   tab: children   esc: back' tab)" || return
     # fzf --expect: line 1 is "tab" or empty. Line 2 is the favorite row.
@@ -135,9 +123,8 @@ sjmp_pick_fav() {
       continue
     fi
     rows=$(printf '%s\n' "$kids" | sjmp_kid_rows)
-    count=$(printf '%s\n' "$rows" | awk 'END { print NR+0 }')
     status=0
-    kid="$(printf '%s\n' "$rows" | sjmp_fzf_kids "$count")" || status=$?
+    kid="$(printf '%s\n' "$rows" | sjmp_fzf_kids)" || status=$?
     [ "$status" -eq 130 ] && continue
     [ "$status" -ne 0 ] && return "$status"
     [ -z "$kid" ] && continue

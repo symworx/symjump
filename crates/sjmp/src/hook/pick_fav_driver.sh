@@ -136,10 +136,10 @@ has_arg 1 'enter: this dir   tab: children   esc: back' || fail "enter header"
 [ ! -e "$fake/fzf-args-2" ] || fail "enter opened a second picker"
 
 # Tab returns the child. The number and the name are stripped. A space in
-# the child name stays in the path. Nine or fewer rows bind 1-9.
+# the child name stays in the path. Numbers are 01, 02. Digits are not bound.
 new_case
 printf 'tab\n%s\n' "$row" > "$fake/out-1"
-printf '%s\n' $'1\tchild proj\t/tmp/worx pin/child proj' > "$fake/out-2"
+printf '%s\n' $'01\tchild proj\t/tmp/worx pin/child proj' > "$fake/out-2"
 run_pick
 assert_file "$fake/stdout" "$child" "tab stdout"
 assert_file "$fake/rc" "0" "tab rc"
@@ -149,16 +149,18 @@ assert_file "$fake/kids-argc" "2" "kids argc"
 assert_file "$fake/kids-path" "$pin" "kids path"
 has_arg 1 '--expect=tab' || fail "tab fav picker missing --expect"
 has_arg 2 '--prompt=kid> ' || fail "child prompt"
-has_arg 2 '1-9: that row   enter: this dir   esc: back' || fail "child header"
+has_arg 2 'number or name, then enter   esc: back' || fail "child header"
 has_arg 2 '--exact' || fail "child picker missing --exact"
 has_arg 2 '--nth=1,2' || fail "child picker missing --nth"
 has_arg 2 '--with-nth=1,2' || fail "child picker missing --with-nth"
 has_arg 2 $'--delimiter=\t' || fail "child picker missing tab delimiter"
-has_substr 2 'pos(1)+accept' || fail "short child list did not bind 1-9"
+if has_substr 2 'pos(1)+accept'; then
+  fail "child list bound 1-9"
+fi
 if has_arg 2 '--expect=tab'; then
   fail "child picker must not use --expect"
 fi
-assert_file "$fake/fzf-in-2" $'1\tchild proj\t/tmp/worx pin/child proj\n2\tother\t/tmp/worx pin/other' "kids lines"
+assert_file "$fake/fzf-in-2" $'01\tchild proj\t/tmp/worx pin/child proj\n02\tother\t/tmp/worx pin/other' "kids lines"
 
 # Ten or more rows do not bind digits. Typing 10 selects that row.
 new_case
@@ -172,7 +174,7 @@ has_arg 2 'number or name, then enter   esc: back' || fail "long child header"
 if has_substr 2 'pos(1)+accept'; then
   fail "long child list bound 1-9"
 fi
-many=$(i=1; while [ "$i" -le 12 ]; do printf '%d\tc%02d\t/tmp/worx pin/c%02d\n' "$i" "$i" "$i"; i=$((i + 1)); done)
+many=$(i=1; while [ "$i" -le 12 ]; do printf '%02d\tc%02d\t/tmp/worx pin/c%02d\n' "$i" "$i" "$i"; i=$((i + 1)); done)
 assert_file "$fake/fzf-in-2" "${many%$'\n'}" "many rows"
 
 # No children: stay on the place list. The next Enter uses the pin.

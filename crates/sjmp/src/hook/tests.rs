@@ -145,8 +145,9 @@ fn hook_explicit_ollama_run_stays_a_command() {
 fn hook_agent_place_tab_drills_one_level() {
     let h = bash_hook(&Config::default());
     assert!(h.contains("enter: this dir   tab: children   esc: back"));
-    assert!(h.contains("1-9: that row   enter: this dir   esc: back"));
     assert!(h.contains("number or name, then enter   esc: back"));
+    assert!(h.contains("%02d"));
+    assert!(!h.contains("1-9: that row"));
     assert!(h.contains("--with-nth=1,2"));
     assert!(h.contains("sjmp: no children:"));
     assert_eq!(h.matches("--expect=").count(), 1);

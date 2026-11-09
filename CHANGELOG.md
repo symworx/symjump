@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- After an agent action asks for a place, Tab lists one level of children of the highlighted favorite (`sjmp kids`). The rows are numbered. `1`–`9` accepts that row when there are nine or fewer. On a longer list, type the number or the name and press Enter, so `10` selects row 10. Enter still uses the pin. Esc on the child list returns to the pins. A pin with no children stays on the place list.
+- After an agent action asks for a place, Tab lists one level of children of the highlighted favorite (`sjmp kids`). The rows are numbered `01`, `02`, and so on. Type that number or the name and press Enter. `01` selects the first row and `10` selects row 10. Enter still uses the pin. Esc on the child list returns to the pins. A pin with no children stays on the place list.
 
 ### Changed 
 
