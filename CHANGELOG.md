@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.3.0] - 2026-11-09
+
+### Added
+
 - `[dashboard]` sets the dashboard geometry. `direction` is `vertical` (left | right) or `horizontal` (top / bottom). Each `[[dashboard.pane]]` has a `size` along that split, and an optional `sub` the other way. Percents sum to 100. The default is `66/34` with `50/50` on the right pane. `sjmp config` walks the direction, the split counts, and the percentages. The layout is read when the dashboard opens.
 
 - After an agent action asks for a place, Tab lists one level of children of the highlighted favorite (`sjmp kids`). The rows are numbered `01`, `02`, and so on. Type that number or the name and press Enter. `01` selects the first row and `10` selects row 10. Enter still uses the pin. Esc on the child list returns to the pins. A pin with no children stays on the place list.
@@ -48,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `action rm`, `toolbox`, bash hook + `jmp`.
 - Apache-2.0 `LICENSE`.
 
-[Unreleased]: https://github.com/symworx/symjump/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/symworx/symjump/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/symworx/symjump/releases/tag/v0.3.0
 [0.2.1]: https://github.com/symworx/symjump/releases/tag/v0.2.1
 [0.2.0]: https://github.com/symworx/symjump/releases/tag/v0.2.0
 [0.1.0]: https://github.com/symworx/symjump/releases/tag/v0.1.0
