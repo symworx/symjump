@@ -2,11 +2,13 @@
 // Licensed under the Apache License, Version 2.0.
 
 mod action;
+mod config;
 mod pin;
 
 use crate::ctx::Ctx;
 
 pub use action::print as print_action;
+pub use config::print as print_config;
 pub use pin::print as print_pin;
 
 pub fn wants_help(args: &[String], start: usize) -> bool {
@@ -17,7 +19,7 @@ pub fn wants_help(args: &[String], start: usize) -> bool {
             while i < args.len() {
                 match args[i].as_str() {
                     "-h" | "--help" => return true,
-                    "--label" | "--keys" | "--cmd" | "--name" => i += 1,
+                    "--label" | "--keys" | "--cmd" | "--name" | "--right" | "--bottom" => i += 1,
                     _ => {}
                 }
                 i += 1;
@@ -32,8 +34,9 @@ pub fn run(ctx: &Ctx) -> Result<(), Box<dyn std::error::Error>> {
         None | Some("-h") | Some("--help") | Some("help") => print_help(),
         Some("pin") => print_pin(),
         Some("action") | Some("actions") => print_action(),
+        Some("config") => print_config(),
         Some(other) => {
-            return Err(format!("unknown help topic: {other} (try pin or action)").into());
+            return Err(format!("unknown help topic: {other} (try pin, action, or config)").into());
         }
     }
     Ok(())
@@ -46,7 +49,7 @@ sjmp — portable favorites + action launcher
 
 Usage:
   sjmp <command> [args]
-  sjmp help [pin|action]
+  sjmp help [pin|action|config]
 
 Commands:
   list                      list favorites
@@ -57,6 +60,7 @@ Commands:
   init [bash]               print config path, or bash hook
   action                    list, add, run, or remove actions
   exec <fav|path> --cmd C   print an exec line
+  config                    set the dashboard split
   toolbox list              list toolbox actions
   toolbox enter <q>         print enter command (toolbox or distrobox)
 
@@ -67,6 +71,7 @@ Options:
 See also:
   sjmp pin --help
   sjmp action --help
+  sjmp config --help
 "
     );
 }

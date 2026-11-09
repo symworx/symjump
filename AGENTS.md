@@ -12,7 +12,7 @@ Authoritative design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [docs/ROADMAP.m
 
 ## What to build (in order)
 
-Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bash hook + `jmp`, `M-p` / `M-P` / `M-Enter` in a normal shell and in vterm, `M-x` when readline receives it, numbered picks while the query is empty, `sjmp action` / `action add` / `action rm` / `exec` / `toolbox`.
+Shipped: CLI `list` / `jump` / `pin` / `unpin` / `kids`, closed TOML subset, bash hook + `jmp`, `M-p` / `M-P` / `M-Enter` in a normal shell and in vterm, `M-x` when readline receives it, numbered picks while the query is empty, `sjmp action` / `action add` / `action rm` / `exec` / `toolbox`, `sjmp config` for the `[dashboard]` split.
 
 Remaining:
 

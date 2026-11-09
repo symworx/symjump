@@ -78,6 +78,8 @@ Document `alt-sends-escape`.
 
 The dashboard opens a new tmux window. The left pane runs that agent and leaves a shell when it exits. The right column is two shells. Inside tmux, the window is added to the current session and the other windows stay. Outside tmux, it is added to session `sjmp-<directory>`, which is created the first time. The current pane's directory changes only on Enter.
 
+`[dashboard]` sets that split. `right` is the shell column width. `bottom` is the lower shell's share of that column. Defaults are `34%` and `50%`. A size is `1`–`99%` or a cell count from `1` to `9999`. `sjmp config` asks for both; Enter keeps the current value. `sjmp config --right 40% --bottom 30%` writes them without a prompt. The layout reads `sjmp config show` when the dashboard opens. Pins stay on `sjmp pin` and `sjmp unpin`.
+
 `sjmp pin --keys` refuses letters that are already taken:
 
 - sjmp chords: `p` (`M-p` places), `P` (`M-P` kids), `x` (`M-x` actions)
@@ -140,8 +142,14 @@ separate docker enter action is not required for named environments.
 
 ## Config sketch
 
-`~/.config/symjump/favorites.toml` — `root`, `[keys]`, `[[favorites]]`,
+`~/.config/symjump/favorites.toml` — `root`, `[keys]`, `[dashboard]`, `[[favorites]]`,
 `[[actions.toolbox]]`, `[[actions.agent]]` as above. Use zoxide if present.
+
+```toml
+[dashboard]
+right = "34%"
+bottom = "50%"
+```
 
 See [examples/favorites.toml](../examples/favorites.toml).
 
@@ -169,6 +177,7 @@ Shipped on `feature/cli-build`:
 5. Numbered picks `1`–`9` only while the fzf query is empty
 6. `sjmp action` / `action add` / `action rm` / `exec` / `toolbox`
 7. Places and kids pickers: Enter `cd`s; `a` opens the default agent; `l` opens the local agent
+8. `[dashboard]` split sizes, set with `sjmp config`
 
 Next: spawn backends other than tmux (kitty / foot / gnome / wezterm), zoxide, ratatui if fzf fails.
 

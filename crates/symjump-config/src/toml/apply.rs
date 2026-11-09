@@ -3,7 +3,7 @@
 
 use super::lex::{Section, Value};
 use crate::error::ConfigError;
-use crate::model::Config;
+use crate::model::{Config, Dashboard};
 
 pub(super) fn apply_kv(
     cfg: &mut Config,
@@ -44,6 +44,22 @@ pub(super) fn apply_kv(
                 "default" => cfg.ai.default = s.trim().to_ascii_lowercase(),
                 "local" => cfg.ai.local = s,
                 _ => return Err(bad()),
+            }
+        }
+        Section::Dashboard => {
+            if key != "right" && key != "bottom" {
+                return Err(bad());
+            }
+            let raw = match val {
+                Value::Str(s) => s,
+                Value::Int(n) => n.to_string(),
+            };
+            let size = Dashboard::parse_size(&raw)
+                .map_err(|msg| ConfigError::Parse(format!("line {line_no}: {msg}")))?;
+            if key == "right" {
+                cfg.dashboard.right = size;
+            } else {
+                cfg.dashboard.bottom = size;
             }
         }
         Section::Favorite => {

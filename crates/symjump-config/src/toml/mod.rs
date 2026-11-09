@@ -109,6 +109,8 @@ cmd = "grok"
         let c = Config::parse_str("").unwrap();
         assert_eq!(c.keys.leader, "M-p");
         assert_eq!(c.ai.command().unwrap(), "grok");
+        assert_eq!(c.dashboard.right, "34%");
+        assert_eq!(c.dashboard.bottom, "50%");
         assert!(c.favorites.is_empty());
     }
 
@@ -121,6 +123,23 @@ cmd = "grok"
             .unwrap();
         assert_eq!(local.ai.command().unwrap(), "ollama run llama3");
         assert!(Config::parse_str("[ai]\ndefault = \"gpt\"\n").is_err());
+    }
+
+    #[test]
+    fn dashboard_sizes_round_trip() {
+        let raw = "[dashboard]\nright = \"40%\"\nbottom = 12\n";
+        let c = Config::parse_str(raw).unwrap();
+        assert_eq!(c.dashboard.right, "40%");
+        assert_eq!(c.dashboard.bottom, "12");
+        let only_right = Config::parse_str("[dashboard]\nright = \"20%\"\n").unwrap();
+        assert_eq!(only_right.dashboard.right, "20%");
+        assert_eq!(only_right.dashboard.bottom, "50%");
+        let again = Config::parse_str(&c.to_toml().unwrap()).unwrap();
+        assert_eq!(again.dashboard, c.dashboard);
+        assert!(c.to_toml().unwrap().contains("right = \"40%\""));
+        assert!(Config::parse_str("[dashboard]\nright = \"100%\"\n").is_err());
+        assert!(Config::parse_str("[dashboard]\nright = \"34%;x\"\n").is_err());
+        assert!(Config::parse_str("[dashboard]\nwide = \"10%\"\n").is_err());
     }
 
     #[test]

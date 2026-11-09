@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 pub mod action;
+pub mod config;
 pub mod exec;
 pub mod init;
 pub mod jump;

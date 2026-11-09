@@ -9,6 +9,7 @@ pub(super) enum Section {
     Keys,
     Frequent,
     Ai,
+    Dashboard,
     Favorite,
     Toolbox,
     Agent,
@@ -46,6 +47,7 @@ pub(super) fn parse_header(line: &str, line_no: usize) -> Result<Section, Config
             "keys" => Ok(Section::Keys),
             "frequent" => Ok(Section::Frequent),
             "ai" => Ok(Section::Ai),
+            "dashboard" => Ok(Section::Dashboard),
             _ => Err(err()),
         };
     }

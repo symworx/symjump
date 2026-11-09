@@ -57,7 +57,8 @@ fn help_menus() {
     let top_s = String::from_utf8_lossy(&top.stdout);
     assert!(top_s.contains("sjmp pin --help"));
     assert!(top_s.contains("sjmp action --help"));
-    assert!(top_s.contains("sjmp help [pin|action]"));
+    assert!(top_s.contains("sjmp config --help"));
+    assert!(top_s.contains("sjmp help [pin|action|config]"));
 
     let pin = bin()
         .args(["--config", c, "pin", "--help"])
@@ -106,6 +107,21 @@ fn help_menus() {
         .unwrap();
     assert!(add_help.status.success());
     assert_eq!(String::from_utf8_lossy(&add_help.stdout), action_s);
+
+    let config_help = bin()
+        .args(["--config", c, "config", "--help"])
+        .output()
+        .unwrap();
+    assert!(config_help.status.success());
+    let config_s = String::from_utf8_lossy(&config_help.stdout);
+    assert!(config_s.contains("sjmp config --right 40% --bottom 30%"));
+    assert!(config_s.contains("sjmp pin and sjmp unpin"));
+    let config_topic = bin()
+        .args(["--config", c, "help", "config"])
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&config_topic.stdout), config_s);
+    assert!(!cfg.exists(), "config --help must not write the config");
 
     let bad = bin()
         .args(["--config", c, "help", "jump"])
@@ -393,7 +409,9 @@ fn first_run_creates_default_config() {
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(cfg.is_file());
-    assert!(fs::read_to_string(&cfg).unwrap().contains("[keys]"));
+    let created = fs::read_to_string(&cfg).unwrap();
+    assert!(created.contains("[keys]"));
+    assert!(created.contains("[dashboard]"));
     assert!(String::from_utf8_lossy(&out.stderr).contains("created"));
     let loc = bin()
         .args(["init"])
@@ -407,6 +425,107 @@ fn first_run_creates_default_config() {
         cfg.to_str().unwrap()
     );
     assert!(!String::from_utf8_lossy(&loc.stderr).contains("created"));
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+fn output_with_stdin(args: &[&str], input: &[u8]) -> std::process::Output {
+    let mut child = bin()
+        .args(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(input).unwrap();
+    child.wait_with_output().unwrap()
+}
+
+#[test]
+fn dashboard_config_split() {
+    let tmp = scratch("dash");
+    let cfg = write_cfg(&tmp);
+    let c = cfg.to_str().unwrap();
+    let before = fs::read_to_string(&cfg).unwrap();
+    let show = bin()
+        .args(["--config", c, "config", "show"])
+        .output()
+        .unwrap();
+    assert!(
+        show.status.success(),
+        "{}",
+        String::from_utf8_lossy(&show.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&show.stdout), "34%\n50%\n");
+    assert_eq!(fs::read_to_string(&cfg).unwrap(), before);
+
+    let set = bin()
+        .args(["--config", c, "config", "--right", "40%", "--bottom", "25"])
+        .output()
+        .unwrap();
+    assert!(
+        set.status.success(),
+        "{}",
+        String::from_utf8_lossy(&set.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&set.stdout), "40%\n25\n");
+    let body = fs::read_to_string(&cfg).unwrap();
+    assert!(body.contains("right = \"40%\""));
+    assert!(body.contains("bottom = \"25\""));
+    assert!(body.contains("symworx"));
+    assert!(body.contains("dev-python"));
+
+    let bad = bin()
+        .args(["--config", c, "config", "--right", "100%"])
+        .output()
+        .unwrap();
+    assert!(!bad.status.success());
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("1-99%"));
+    assert_eq!(fs::read_to_string(&cfg).unwrap(), body);
+
+    let inject = bin()
+        .args(["--config", c, "config", "--bottom", "34%;touch"])
+        .output()
+        .unwrap();
+    assert!(!inject.status.success());
+    assert_eq!(fs::read_to_string(&cfg).unwrap(), body);
+
+    let cells = bin()
+        .args(["--config", c, "config", "--bottom", "12"])
+        .output()
+        .unwrap();
+    assert!(
+        cells.status.success(),
+        "{}",
+        String::from_utf8_lossy(&cells.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&cells.stdout), "40%\n12\n");
+
+    let walk = output_with_stdin(&["--config", c, "config"], b"\n20\n");
+    assert!(
+        walk.status.success(),
+        "{}",
+        String::from_utf8_lossy(&walk.stderr)
+    );
+    assert!(String::from_utf8_lossy(&walk.stderr).contains("right column [40%]"));
+    assert_eq!(String::from_utf8_lossy(&walk.stdout), "40%\n20\n");
+    let walked = fs::read_to_string(&cfg).unwrap();
+    assert!(walked.contains("symworx"));
+
+    let kept = fs::read_to_string(&cfg).unwrap();
+    let cancel = output_with_stdin(&["--config", c, "config"], b"");
+    assert!(!cancel.status.success());
+    assert!(String::from_utf8_lossy(&cancel.stderr).contains("cancelled"));
+    assert_eq!(fs::read_to_string(&cfg).unwrap(), kept);
+
+    let jump = bin()
+        .args(["--config", c, "jump", "s"])
+        .env("HOME", "/home/user")
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&jump.stdout).trim(),
+        "/home/user/src/symworx"
+    );
     let _ = fs::remove_dir_all(&tmp);
 }
 

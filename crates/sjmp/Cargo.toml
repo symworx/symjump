@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 readme = "README.md"
-description = "symjump CLI — list, jump, pin, unpin, actions (toolbox / agent exec)"
+description = "symjump CLI — list, jump, pin, unpin, config, actions (toolbox / agent exec)"
 
 [[bin]]
 name = "sjmp"

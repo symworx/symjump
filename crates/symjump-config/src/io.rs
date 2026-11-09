@@ -78,6 +78,8 @@ mod tests {
         assert!(Config::ensure_path(&path).unwrap());
         let first = fs::read_to_string(&path).unwrap();
         assert!(first.contains("[keys]"));
+        assert!(first.contains("[dashboard]"));
+        assert!(first.contains("\"34%\""));
         assert!(first.contains("actions"));
         fs::write(&path, "root = \"~/kept\"\n").unwrap();
         assert!(!Config::ensure_path(&path).unwrap());

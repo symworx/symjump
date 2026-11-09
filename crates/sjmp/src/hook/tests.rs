@@ -142,6 +142,38 @@ fn hook_explicit_ollama_run_stays_a_command() {
 }
 
 #[test]
+fn hook_dashboard_sizes_come_from_config() {
+    let h = bash_hook(&Config::default());
+    assert!(h.contains("sjmp_dash_sizes"));
+    assert!(h.contains("config show"));
+    assert!(h.contains("-l \"$right_l\""));
+    assert!(h.contains("-l \"$bottom_l\""));
+    assert!(!h.contains("-l 34%"));
+    assert!(h.contains("right_l=34%"));
+    assert!(h.contains("bottom_l=50%"));
+
+    let dir = std::env::temp_dir().join(format!("sjmp-dash-sizes-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let hook_path = dir.join("hook.sh");
+    std::fs::write(&hook_path, &h).unwrap();
+    let driver =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook/dash_sizes_driver.sh");
+    let out = std::process::Command::new("bash")
+        .arg(&driver)
+        .arg(&hook_path)
+        .output()
+        .expect("bash");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        out.status.success(),
+        "dashboard size driver failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
 fn hook_agent_place_tab_drills_one_level() {
     let h = bash_hook(&Config::default());
     assert!(h.contains("enter: this dir   tab: children   esc: back"));

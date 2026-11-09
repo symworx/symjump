@@ -18,6 +18,12 @@ pub(super) fn emit_config(cfg: &Config) -> String {
     out.push_str("[ai]\n");
     out.push_str(&format!("default = {}\n", emit_string(&cfg.ai.default)));
     out.push_str(&format!("local = {}\n\n", emit_string(&cfg.ai.local)));
+    out.push_str("[dashboard]\n");
+    out.push_str(&format!("right = {}\n", emit_string(&cfg.dashboard.right)));
+    out.push_str(&format!(
+        "bottom = {}\n\n",
+        emit_string(&cfg.dashboard.bottom)
+    ));
     for f in &cfg.favorites {
         out.push_str("[[favorites]]\n");
         out.push_str(&format!("label = {}\n", emit_string(&f.label)));

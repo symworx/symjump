@@ -171,14 +171,42 @@ sjmp_tmux_slug() {
   [ -n "$slug" ] || slug=work
   printf '%s\n' "$slug"
 }
+# 1-99% or 1-9999 cells. Anything else must not reach tmux -l.
+sjmp_ok_size() {
+  [[ "$1" =~ ^[1-9][0-9]?%$ ]] && return 0
+  [[ "$1" =~ ^[1-9][0-9]{0,3}$ ]] && return 0
+  return 1
+}
+# [dashboard] right and bottom. A missing or bad size stays at 34% and 50%.
+sjmp_dash_sizes() {
+  local sizes got_r got_b right_l bottom_l
+  right_l=34%
+  bottom_l=50%
+  if sizes="$("$sjmp_bin" config show 2>/dev/null)"; then
+    case "$sizes" in
+      *$'\n'*)
+        got_r="${sizes%%$'\n'*}"
+        got_b="${sizes#*$'\n'}"
+        got_b="${got_b%%$'\n'*}"
+        sjmp_ok_size "$got_r" && right_l="$got_r"
+        sjmp_ok_size "$got_b" && bottom_l="$got_b"
+        ;;
+    esac
+  fi
+  printf '%s\n%s\n' "$right_l" "$bottom_l"
+}
 sjmp_tmux_layout() {
-  local target="$1" path="$2" agent="$3" left right bottom
+  local target="$1" path="$2" agent="$3" left right bottom sizes right_l bottom_l
+  sizes="$(sjmp_dash_sizes)"
+  right_l="${sizes%%$'\n'*}"
+  bottom_l="${sizes#*$'\n'}"
+  bottom_l="${bottom_l%%$'\n'*}"
   # pane-base-index may be 1, so .0/.1/.2 do not name these panes.
   left="$(tmux display-message -p -t "$target" '#{pane_id}')"
-  # Left stays full height. The new pane is the right column, 34% wide.
-  right="$(tmux split-window -t "$left" -h -P -F '#{pane_id}' -c "$path" -l 34%)"
+  # Left stays full height. The new pane is the right column.
+  right="$(tmux split-window -t "$left" -h -P -F '#{pane_id}' -c "$path" -l "$right_l")"
   # Two shells in that column, one above the other.
-  bottom="$(tmux split-window -t "$right" -v -P -F '#{pane_id}' -c "$path" -l 50%)"
+  bottom="$(tmux split-window -t "$right" -v -P -F '#{pane_id}' -c "$path" -l "$bottom_l")"
   tmux set-option -w -t "$target" pane-border-status top
   tmux set-option -w -t "$target" pane-border-format '#{pane_index} #{pane_title}'
   tmux select-pane -t "$left" -T "${agent%% *}"

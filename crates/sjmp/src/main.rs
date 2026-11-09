@@ -67,6 +67,7 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         "init" => cmd::init::run(&ctx)?,
         "action" | "actions" => cmd::action::run(&ctx)?,
         "exec" => cmd::exec::run(&ctx)?,
+        "config" => cmd::config::run(&ctx)?,
         "toolbox" => cmd::toolbox::run(&ctx)?,
         other => return Err(format!("unknown command: {other}").into()),
     }

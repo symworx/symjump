@@ -38,7 +38,7 @@ sjmp action rm grok-build
 sjmp action rm agent python   # pass agent|toolbox when the query matches both
 ```
 
-`sjmp --help`, `sjmp pin --help`, and `sjmp action --help` cover the rest.
+`sjmp --help`, `sjmp pin --help`, `sjmp action --help`, and `sjmp config --help` cover the rest.
 A fuller sample is [examples/favorites.toml](examples/favorites.toml).
 
 ## Bindings
@@ -58,7 +58,7 @@ Meta, not Control. The same chords work in a bare terminal, in tmux, and in Emac
 | letter | in the action palette, query empty: run the action with that key. `t` is a plain tmux session unless that key is already set |
 | Esc | on a later picker: back to the previous one. On the first picker: close |
 
-The dashboard is a tmux window. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. Two shells sit on the right. Inside tmux it is a new window. Outside tmux it is session `sjmp-<directory>`. If tmux is not installed, sjmp says so and stops.
+The dashboard is a tmux window. `a` starts `[ai] default`. `l` starts `[ai] local` (default `ollama`). Bare `ollama` lists local models in the left pane and loads one only after you pick it. `ollama run <name>` starts that model. Two shells sit on the right. `[dashboard]` sets that column: `right` (default `34%`) and `bottom` (default `50%`). `sjmp config` walks both. Enter keeps the shown size. The layout reads the file when the dashboard opens. Inside tmux it is a new window. Outside tmux it is session `sjmp-<directory>`. If tmux is not installed, sjmp says so and stops.
 
 `M-x` or `M-Enter`, then a letter, runs the action with that key while the query is empty. The filter matches the key and the label. It does not match the kind word. `t` opens a plain tmux session for the current directory. No agent and no extra panes. That default row is kind `session`. Outside tmux this attaches to `sjmp-<directory>` or creates it. Inside tmux it is a new window in the current session. An action whose key is already `t` replaces that default. `sjmp_tmux '{path}'` still asks for a favorite, then opens that directory.
 
