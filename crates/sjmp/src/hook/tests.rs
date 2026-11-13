@@ -174,6 +174,34 @@ fn hook_dashboard_sizes_come_from_config() {
 }
 
 #[test]
+fn hook_dashboard_reuses_open_place() {
+    let h = bash_hook(&Config::default());
+    assert!(h.contains("sjmp_same_place"));
+    assert!(h.contains("sjmp_tmux_focus_place"));
+    assert!(h.contains("Do not add a window or a pane."));
+
+    let dir = std::env::temp_dir().join(format!("sjmp-dash-reuse-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let hook_path = dir.join("hook.sh");
+    std::fs::write(&hook_path, &h).unwrap();
+    let driver =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook/dash_reuse_driver.sh");
+    let out = std::process::Command::new("bash")
+        .arg(&driver)
+        .arg(&hook_path)
+        .output()
+        .expect("bash");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        out.status.success(),
+        "dashboard reuse driver failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
 fn hook_agent_place_tab_drills_one_level() {
     let h = bash_hook(&Config::default());
     assert!(h.contains("enter: this dir   tab: children   esc: back"));

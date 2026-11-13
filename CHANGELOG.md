@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+- The agent dashboard (`M-Enter` or `M-x`, then `a` or `l`) does not add a tmux window or pane when the current pane is already that directory or that git work tree. If another pane in the session is that place, sjmp selects it. Outside tmux, a later open attaches to `sjmp-<directory>` when a pane there is already the place.
+
 ## [0.3.0] - 2026-11-09
 
 ### Added

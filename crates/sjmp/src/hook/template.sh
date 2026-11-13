@@ -362,6 +362,57 @@ sjmp_tmux_layout() {
   layout="$(sjmp_layout_fetch)"
   sjmp_layout_apply "$target" "$path" "$agent" "$layout"
 }
+# Physical directory. Fails when the path is missing.
+sjmp_phys() {
+  local dir="$1"
+  [ -d "$dir" ] || return 1
+  (cd -- "$dir" && pwd -P)
+}
+# Git work tree root, or nothing when this path is not in one.
+sjmp_git_top() {
+  local top
+  top="$(git -C "$1" rev-parse --show-toplevel 2>/dev/null)" || return 0
+  [ -d "$top" ] || return 0
+  (cd -- "$top" && pwd -P)
+}
+# Same directory, or the same git work tree.
+sjmp_same_place() {
+  local a b ta tb
+  a="$(sjmp_phys "$1")" || return 1
+  b="$(sjmp_phys "$2")" || return 1
+  [ "$a" = "$b" ] && return 0
+  ta="$(sjmp_git_top "$a")"
+  tb="$(sjmp_git_top "$b")"
+  [ -n "$ta" ] && [ "$ta" = "$tb" ]
+}
+# Focus a pane that is already this directory or git work tree.
+# With no session, search the current tmux session. The shell's directory
+# counts, so a stale pane path still stays put.
+# With a session, search that session. Used from outside tmux.
+# Return 0 when the caller must not open a window or a pane.
+sjmp_tmux_focus_place() {
+  local path="$1" session="${2:-}" id pane_path panes fmt
+  local -a args=()
+  if [ -z "$session" ]; then
+    [ -n "${TMUX:-}" ] || return 1
+    if sjmp_same_place "$PWD" "$path"; then
+      return 0
+    fi
+    args=(-s)
+  else
+    args=(-t "=$session")
+  fi
+  fmt="$(printf '%s\t%s' '#{pane_id}' '#{pane_current_path}')"
+  panes="$(tmux list-panes "${args[@]}" -F "$fmt")" || return 1
+  while IFS=$'\t' read -r id pane_path; do
+    [ -n "$id" ] && [ -n "$pane_path" ] && [ -d "$pane_path" ] || continue
+    if sjmp_same_place "$pane_path" "$path"; then
+      tmux select-pane -t "$id" || return 1
+      return 0
+    fi
+  done <<< "$panes"
+  return 1
+}
 # Show a session. Inside tmux, switch the client. Outside, attach when
 # stdout is a tty. Never adds a window.
 sjmp_tmux_show() {
@@ -395,6 +446,15 @@ sjmp_tmux_dash() {
   fi
   slug="$(sjmp_tmux_slug "$path")"
   session="sjmp-${slug}"
+  # Already in this directory or its git work tree: stay on this pane, or
+  # focus the pane that is. Do not add a window or a pane.
+  if [ -n "${TMUX:-}" ] && sjmp_tmux_focus_place "$path"; then
+    return 0
+  fi
+  if [ -z "${TMUX:-}" ] && tmux has-session -t "=$session" 2>/dev/null && sjmp_tmux_focus_place "$path" "$session"; then
+    sjmp_tmux_show "$session"
+    return 0
+  fi
   pane_cmd="${agent}; exec bash"
   # Tag the window as an agent session for the status bar. The EXIT trap
   # clears @agent when the pane's shell exits, even after exec bash.
