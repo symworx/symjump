@@ -28,7 +28,14 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains("sjmp_fzf_nav 'kids> '"));
     assert!(h.contains("sjmp_fzf_action"));
     assert!(h.contains("prompt='action> '"));
-    assert!(h.contains("session  t  tmux  sjmp_tmux"));
+    assert!(h.contains("session t tmux sjmp_tmux"));
+    assert!(h.contains("agent h here sjmp_tmux_here"));
+    assert!(h.contains("sjmp_tmux_here()"));
+    assert!(h.contains("sjmp_align_action_rows"));
+    assert!(h.contains("h: agent here"));
+    assert!(h.contains("windows w windows sjmp_windows"));
+    assert!(h.contains("sjmp_tmux_grid"));
+    assert!(h.contains("w: windows"));
     assert!(h.contains("--nth=2,3"));
     assert!(h.contains("session)"));
     assert!(h.contains("command -v distrobox"));
@@ -174,6 +181,34 @@ fn hook_dashboard_sizes_come_from_config() {
 }
 
 #[test]
+fn hook_dashboard_reuses_open_place() {
+    let h = bash_hook(&Config::default());
+    assert!(h.contains("sjmp_same_place"));
+    assert!(h.contains("sjmp_tmux_focus_place"));
+    assert!(h.contains("Do not add a window or a pane."));
+
+    let dir = std::env::temp_dir().join(format!("sjmp-dash-reuse-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let hook_path = dir.join("hook.sh");
+    std::fs::write(&hook_path, &h).unwrap();
+    let driver =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook/dash_reuse_driver.sh");
+    let out = std::process::Command::new("bash")
+        .arg(&driver)
+        .arg(&hook_path)
+        .output()
+        .expect("bash");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        out.status.success(),
+        "dashboard reuse driver failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
 fn hook_agent_place_tab_drills_one_level() {
     let h = bash_hook(&Config::default());
     assert!(h.contains("enter: this dir   tab: children   esc: back"));
@@ -202,6 +237,119 @@ fn hook_agent_place_tab_drills_one_level() {
     assert!(
         out.status.success(),
         "place picker drill driver failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
+fn hook_action_menu_columns_align() {
+    let h = bash_hook(&Config::default());
+    let dir = std::env::temp_dir().join(format!("sjmp-align-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("bin")).unwrap();
+    let stub = dir.join("bin/sjmp");
+    std::fs::write(&stub, "#!/bin/bash\nexit 0\n").unwrap();
+    std::fs::set_permissions(&stub, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let hook_path = dir.join("hook.sh");
+    std::fs::write(&hook_path, &h).unwrap();
+    let script = r#"
+unset INSIDE_EMACS
+source "$1"
+printf '%s\n' \
+  'agent g grok-build grok' \
+  'toolbox p python dev-python' \
+  'session t tmux sjmp_tmux' \
+  'agent h here sjmp_tmux_here' \
+  'windows w windows sjmp_windows' \
+  | sjmp_align_action_rows
+printf '%s\n' '----'
+printf '%s\n' \
+  'session t tmux sjmp_tmux' \
+  'agent h here sjmp_tmux_here' \
+  'windows w windows sjmp_windows' \
+  | sjmp_align_action_rows
+"#;
+    let out = std::process::Command::new("bash")
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                dir.join("bin").display(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
+        .arg("-c")
+        .arg(script)
+        .arg("align")
+        .arg(&hook_path)
+        .output()
+        .expect("bash");
+    let _ = std::fs::remove_dir_all(&dir);
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.status.success(),
+        "align failed\nstdout:\n{text}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        text,
+        "\
+agent    g  grok-build  grok
+toolbox  p  python      dev-python
+session  t  tmux        sjmp_tmux
+agent    h  here        sjmp_tmux_here
+windows  w  windows     sjmp_windows
+----
+session  t  tmux     sjmp_tmux
+agent    h  here     sjmp_tmux_here
+windows  w  windows  sjmp_windows
+"
+    );
+}
+
+#[test]
+fn hook_window_grid_splits_columns_then_rows() {
+    let h = bash_hook(&Config::default());
+    let dir = std::env::temp_dir().join(format!("sjmp-grid-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let hook_path = dir.join("hook.sh");
+    std::fs::write(&hook_path, &h).unwrap();
+    let driver = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook/grid_driver.sh");
+    let out = std::process::Command::new("bash")
+        .arg(&driver)
+        .arg(&hook_path)
+        .output()
+        .expect("bash");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        out.status.success(),
+        "window grid driver failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
+fn hook_tmux_adds_window_when_already_inside() {
+    let h = bash_hook(&Config::default());
+    let dir = std::env::temp_dir().join(format!("sjmp-session-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let hook_path = dir.join("hook.sh");
+    std::fs::write(&hook_path, &h).unwrap();
+    let driver =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/hook/session_driver.sh");
+    let out = std::process::Command::new("bash")
+        .arg(&driver)
+        .arg(&hook_path)
+        .output()
+        .expect("bash");
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        out.status.success(),
+        "session driver failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );

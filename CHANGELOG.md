@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+## [0.4.0] - 2026-11-19
+
+### Added
+
+- `sjmp windows` to list the preset grids. With no set [[windows]] in the list, default to 2x2, 3x3, and 3x2.
+- On the `w` list `enter` opens the grid. 
+- Within a `tmux` session, a grid is a new window. Outside tmux it is session sjmp-<directory>, and a later open adds another window. The panes are equal shells, with no agent.
+
+
+### Changed
+
+- The agent dashboard (`M-Enter` or `M-x`, then `a` or `l`) does not add a tmux window or pane when the current pane is already that directory or that git work tree. If another pane in the session is that place, sjmp selects it. Outside tmux, a later open attaches to `sjmp-<directory>` when a pane there is already the place.
+- `M-Enter` or `M-x`, then `h`, opens an agent dashboard for the current directory (`sjmp_tmux_here`). It always adds a tmux window and does not ask for a favorite. An action whose key is already `h` replaces this.
+- `M-Enter` or `M-x`, then `w`, opens a preset pane grid for the current directory. Built-in layouts are `2x2`, `2x3` (2 columns, 3 rows), and `3x2`. `[[windows]]` in `favorites.toml` replaces that list. `cols` and `rows` are 1 to 6, and the grid has at least 2 panes. An action whose key is already `w` replaces this.
+- `M-Enter` or `M-x`, then `t`, adds a shell window in the background when already inside tmux. The current panes stay on screen, and sjmp prints the new window index. Each press adds another window. Outside tmux it still attaches to `sjmp-<directory>` or creates it.
+
 ## [0.3.0] - 2026-11-09
 
 ### Added
@@ -52,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `action rm`, `toolbox`, bash hook + `jmp`.
 - Apache-2.0 `LICENSE`.
 
-[Unreleased]: https://github.com/symworx/symjump/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/symworx/symjump/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/symworx/symjump/releases/tag/v0.4.0
 [0.3.0]: https://github.com/symworx/symjump/releases/tag/v0.3.0
 [0.2.1]: https://github.com/symworx/symjump/releases/tag/v0.2.1
 [0.2.0]: https://github.com/symworx/symjump/releases/tag/v0.2.0

@@ -62,6 +62,7 @@ Commands:
   action                    list, add, run, or remove actions
   exec <fav|path> --cmd C   print an exec line
   config                    set the dashboard split
+  windows                   list preset pane grids
   toolbox list              list toolbox actions
   toolbox enter <q>         print enter command (toolbox or distrobox)
 

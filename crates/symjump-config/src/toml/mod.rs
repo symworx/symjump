@@ -6,7 +6,7 @@ mod emit;
 mod lex;
 
 use crate::error::ConfigError;
-use crate::model::{AgentAction, Config, Favorite, ToolboxAction};
+use crate::model::{AgentAction, Config, Favorite, ToolboxAction, WindowLayout};
 use lex::Section;
 
 impl Config {
@@ -46,6 +46,12 @@ fn parse_config(s: &str) -> Result<Config, ConfigError> {
                     cmd: String::new(),
                     keys: None,
                 }),
+                Section::Windows => cfg.windows.push(WindowLayout {
+                    label: String::new(),
+                    cols: 0,
+                    rows: 0,
+                    keys: None,
+                }),
                 Section::DashPane => cfg.dashboard.begin_pane(),
                 _ => {}
             }
@@ -55,6 +61,7 @@ fn parse_config(s: &str) -> Result<Config, ConfigError> {
         apply::apply_kv(&mut cfg, section, &key, val, line_no)?;
     }
     cfg.dashboard.normalize().map_err(ConfigError::Parse)?;
+    apply::check_windows(&cfg)?;
     cfg.ai.command()?;
     cfg.ai.local_command()?;
     Ok(cfg)
@@ -190,5 +197,45 @@ size = 40
     fn roundtrip_toml() {
         let c = Config::parse_str(SAMPLE).unwrap();
         assert_eq!(c, Config::parse_str(&c.to_toml().unwrap()).unwrap());
+    }
+
+    #[test]
+    fn empty_windows_use_builtins() {
+        let c = Config::parse_str("").unwrap();
+        let layouts = c.window_layouts();
+        assert_eq!(layouts.len(), 3);
+        assert_eq!(layouts[0].label, "2x2");
+        assert_eq!((layouts[0].cols, layouts[0].rows), (2, 2));
+        assert_eq!((layouts[1].cols, layouts[1].rows), (2, 3));
+        assert_eq!((layouts[2].cols, layouts[2].rows), (3, 2));
+    }
+
+    #[test]
+    fn windows_replace_builtins_and_roundtrip() {
+        let src = "\
+[[windows]]
+label = \"pair\"
+cols = 2
+rows = 2
+keys = \"p\"
+
+[[windows]]
+label = \"2x3\"
+cols = 2
+rows = 3
+";
+        let c = Config::parse_str(src).unwrap();
+        assert_eq!(c.windows.len(), 2);
+        assert_eq!(c.window_layouts()[0].label, "pair");
+        assert_eq!(c.window_layouts()[0].keys.as_deref(), Some("p"));
+        assert_eq!(c, Config::parse_str(&c.to_toml().unwrap()).unwrap());
+        assert!(Config::parse_str("[[windows]]\nlabel = \"x\"\ncols = 1\nrows = 1\n").is_err());
+        assert!(Config::parse_str("[[windows]]\nlabel = \"x\"\ncols = 7\nrows = 2\n").is_err());
+        assert!(
+            Config::parse_str(
+                "[[windows]]\nlabel = \"a\"\ncols = 2\nrows = 2\nkeys = \"p\"\n\n[[windows]]\nlabel = \"b\"\ncols = 2\nrows = 3\nkeys = \"p\"\n"
+            )
+            .is_err()
+        );
     }
 }
