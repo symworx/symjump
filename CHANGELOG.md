@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `sjmp windows` to list the preset grids. With no set [[windows]] in the list, default to 2x2, 3x3, and 3x2.
+- On the `w` list `enter` opens the grid. 
+- Within a `tmux` session, a grid is a new window. Outside tmux it is session sjmp-<directory>, and a later open adds another window. The panes are equal shells, with no agent.
+
+
 ### Changed
 
 - The agent dashboard (`M-Enter` or `M-x`, then `a` or `l`) does not add a tmux window or pane when the current pane is already that directory or that git work tree. If another pane in the session is that place, sjmp selects it. Outside tmux, a later open attaches to `sjmp-<directory>` when a pane there is already the place.
