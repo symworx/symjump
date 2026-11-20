@@ -64,6 +64,16 @@ pub(super) fn emit_config(cfg: &Config) -> String {
         }
         out.push('\n');
     }
+    for w in &cfg.windows {
+        out.push_str("[[windows]]\n");
+        out.push_str(&format!("label = {}\n", emit_string(&w.label)));
+        out.push_str(&format!("cols = {}\n", w.cols));
+        out.push_str(&format!("rows = {}\n", w.rows));
+        if let Some(k) = &w.keys {
+            out.push_str(&format!("keys = {}\n", emit_string(k)));
+        }
+        out.push('\n');
+    }
     out
 }
 

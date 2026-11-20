@@ -101,6 +101,31 @@ pub(super) fn apply_kv(
                 _ => return Err(bad()),
             }
         }
+        Section::Windows => {
+            let w = cfg.windows.last_mut().ok_or_else(bad)?;
+            match (key, val) {
+                ("label", Value::Str(s)) => w.label = s,
+                ("cols", Value::Int(n)) => w.cols = n,
+                ("rows", Value::Int(n)) => w.rows = n,
+                ("keys", Value::Str(s)) => w.keys = Some(s),
+                _ => return Err(bad()),
+            }
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn check_windows(cfg: &Config) -> Result<(), ConfigError> {
+    let mut seen = std::collections::BTreeSet::new();
+    for w in &cfg.windows {
+        w.check().map_err(ConfigError::Parse)?;
+        if let Some(k) = &w.keys {
+            if !seen.insert(k.clone()) {
+                return Err(ConfigError::Parse(format!(
+                    "window layout key `{k}` is already used"
+                )));
+            }
+        }
     }
     Ok(())
 }

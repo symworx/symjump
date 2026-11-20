@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The agent dashboard (`M-Enter` or `M-x`, then `a` or `l`) does not add a tmux window or pane when the current pane is already that directory or that git work tree. If another pane in the session is that place, sjmp selects it. Outside tmux, a later open attaches to `sjmp-<directory>` when a pane there is already the place.
+- `M-Enter` or `M-x`, then `h`, opens an agent dashboard for the current directory (`sjmp_tmux_here`). It always adds a tmux window and does not ask for a favorite. An action whose key is already `h` replaces this.
+- `M-Enter` or `M-x`, then `w`, opens a preset pane grid for the current directory. Built-in layouts are `2x2`, `2x3` (2 columns, 3 rows), and `3x2`. `[[windows]]` in `favorites.toml` replaces that list. `cols` and `rows` are 1 to 6, and the grid has at least 2 panes. An action whose key is already `w` replaces this.
+- `M-Enter` or `M-x`, then `t`, adds a shell window in the background when already inside tmux. The current panes stay on screen, and sjmp prints the new window index. Each press adds another window. Outside tmux it still attaches to `sjmp-<directory>` or creates it.
 
 ## [0.3.0] - 2026-11-09
 

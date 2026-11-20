@@ -110,4 +110,16 @@ if grep -q 'new-session' "$log"; then
   fail "outside created a session: $(cat "$log")"
 fi
 
+# Current directory, even when this pane is already that place: still a window.
+reset
+export TMUX=1
+cd "$work/repo"
+sjmp_tmux_here
+grep -q 'new-window' "$log" || fail "here did not open a window: $(cat "$log")"
+
+# The place picker path still stays put in that same directory.
+reset
+sjmp_tmux_dash "$work/repo"
+[ ! -s "$log" ] || fail "picker path in the same dir called tmux: $(cat "$log")"
+
 echo ok
