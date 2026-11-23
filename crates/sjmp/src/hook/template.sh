@@ -55,7 +55,7 @@ sjmp_fzf_action() {
   printf '%s\n' "$rows" > "$dir/rows"
   while IFS= read -r row; do
     [ -n "$row" ] || continue
-    key=$(printf '%s\n' "$row" | awk '{print $2}')
+    key=$(printf '%s\n' "$row" | awk '{print $1}')
     case "$key" in
       [a-zA-Z]) ;;
       *) continue ;;
@@ -67,9 +67,9 @@ sjmp_fzf_action() {
     binds="${binds},${key}:execute-silent(cp ${key_q} ${modeq})+abort"
     names="${names},${key}"
   done < "$dir/rows"
-  t_payload="$(awk '$2 == "t" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
-  h_payload="$(awk '$2 == "h" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
-  w_payload="$(awk '$2 == "w" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
+  t_payload="$(awk '$1 == "t" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
+  h_payload="$(awk '$1 == "h" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
+  w_payload="$(awk '$1 == "w" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
   header='letter: that key'
   if [ "$t_payload" = sjmp_tmux ]; then
     header="${header}    t: tmux session"
@@ -82,7 +82,7 @@ sjmp_fzf_action() {
   fi
   header="${header}    esc: close"
   printf '%s\n' "$rows" | fzf --height=20% --reverse --prompt='action> ' --header "$header" \
-    --nth=2,3 \
+    --nth=1,2 \
     --bind "$binds" \
     --bind "change:transform:[[ -z \"{q}\" ]] && echo \"rebind(${names})\" || echo \"unbind(${names})\""
   status=$?
@@ -690,27 +690,27 @@ sjmp_kids() {
     cd -- "$out"
   fi
 }
-# kind, key, label, payload. Pad the first three so the command column lines up.
-# Payload stays last and may contain spaces.
+# key, label, kind, payload. Pad the first three so every column shares a left edge.
+# The key is first. Payload stays last and may contain spaces.
 sjmp_align_action_rows() {
   awk '
-    BEGIN { n = 0; kind_w = 0; key_w = 0; label_w = 0 }
+    BEGIN { n = 0; key_w = 0; label_w = 0; kind_w = 0 }
     NF == 0 { next }
     {
-      kind[n] = $1
-      key[n] = $2
-      label[n] = $3
+      key[n] = $1
+      label[n] = $2
+      kind[n] = $3
       payload = ""
       for (i = 4; i <= NF; i++) payload = payload (i == 4 ? "" : " ") $i
       cmd[n] = payload
-      if (length($1) > kind_w) kind_w = length($1)
-      if (length($2) > key_w) key_w = length($2)
-      if (length($3) > label_w) label_w = length($3)
+      if (length($1) > key_w) key_w = length($1)
+      if (length($2) > label_w) label_w = length($2)
+      if (length($3) > kind_w) kind_w = length($3)
       n++
     }
     END {
       for (i = 0; i < n; i++)
-        printf "%-*s  %-*s  %-*s  %s\n", kind_w, kind[i], key_w, key[i], label_w, label[i], cmd[i]
+        printf "%-*s  %-*s  %-*s  %s\n", key_w, key[i], label_w, label[i], kind_w, kind[i], cmd[i]
     }
   '
 }
@@ -718,14 +718,14 @@ sjmp_actions() {
   local rows row kind payload sel modefile saved status
   rows="$("$sjmp_bin" action list)"
   # Built-in rows use a free key. Align once so they share columns with the list.
-  if ! printf '%s\n' "$rows" | awk '$2 == "t" { found = 1 } END { exit !found }'; then
-    rows="${rows:+$rows$'\n'}session t tmux sjmp_tmux"
+  if ! printf '%s\n' "$rows" | awk '$1 == "t" { found = 1 } END { exit !found }'; then
+    rows="${rows:+$rows$'\n'}t tmux session sjmp_tmux"
   fi
-  if ! printf '%s\n' "$rows" | awk '$2 == "h" { found = 1 } END { exit !found }'; then
-    rows="${rows:+$rows$'\n'}agent h here sjmp_tmux_here"
+  if ! printf '%s\n' "$rows" | awk '$1 == "h" { found = 1 } END { exit !found }'; then
+    rows="${rows:+$rows$'\n'}h here agent sjmp_tmux_here"
   fi
-  if ! printf '%s\n' "$rows" | awk '$2 == "w" { found = 1 } END { exit !found }'; then
-    rows="${rows:+$rows$'\n'}windows w windows sjmp_windows"
+  if ! printf '%s\n' "$rows" | awk '$1 == "w" { found = 1 } END { exit !found }'; then
+    rows="${rows:+$rows$'\n'}w windows windows sjmp_windows"
   fi
   rows="$(printf '%s\n' "$rows" | sjmp_align_action_rows)"
   # Esc closes this first picker. Esc on the favorite picker comes back here.
@@ -740,7 +740,7 @@ sjmp_actions() {
       rm -f "$modefile"
     fi
     [ -z "$row" ] && return
-    kind=$(printf '%s\n' "$row" | awk '{print $1}')
+    kind=$(printf '%s\n' "$row" | awk '{print $3}')
     payload=$(printf '%s\n' "$row" | awk '{for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : "\n")}')
     case "$kind" in
       toolbox)

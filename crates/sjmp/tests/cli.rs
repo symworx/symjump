@@ -218,9 +218,9 @@ fn jump_list_exec_toolbox() {
         .unwrap();
     let listed_s = String::from_utf8_lossy(&listed.stdout);
     assert!(!listed_s.contains('\t'), "{listed_s}");
-    assert!(listed_s.contains("agent    c  codex       codex -C {path}"));
-    assert!(listed_s.contains("agent    g  grok-build  grok"));
-    assert!(listed_s.contains("toolbox  p  python      dev-python"));
+    assert!(listed_s.contains("c  codex       agent    codex -C {path}"));
+    assert!(listed_s.contains("g  grok-build  agent    grok"));
+    assert!(listed_s.contains("p  python      toolbox  dev-python"));
     let taken = bin()
         .args([
             "--config", c, "action", "add", "agent", "--cmd", "echo", "--keys", "c",

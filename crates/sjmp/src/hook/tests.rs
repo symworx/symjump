@@ -28,15 +28,16 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains("sjmp_fzf_nav 'kids> '"));
     assert!(h.contains("sjmp_fzf_action"));
     assert!(h.contains("prompt='action> '"));
-    assert!(h.contains("session t tmux sjmp_tmux"));
-    assert!(h.contains("agent h here sjmp_tmux_here"));
+    assert!(h.contains("t tmux session sjmp_tmux"));
+    assert!(h.contains("h here agent sjmp_tmux_here"));
     assert!(h.contains("sjmp_tmux_here()"));
     assert!(h.contains("sjmp_align_action_rows"));
     assert!(h.contains("h: agent here"));
-    assert!(h.contains("windows w windows sjmp_windows"));
+    assert!(h.contains("w windows windows sjmp_windows"));
     assert!(h.contains("sjmp_tmux_grid"));
     assert!(h.contains("w: windows"));
-    assert!(h.contains("--nth=2,3"));
+    assert!(h.contains("--nth=1,2"));
+    assert!(!h.contains("--nth=2,3"));
     assert!(h.contains("session)"));
     assert!(h.contains("command -v distrobox"));
     assert!(h.contains("neither toolbox nor distrobox found"));
@@ -257,17 +258,17 @@ fn hook_action_menu_columns_align() {
 unset INSIDE_EMACS
 source "$1"
 printf '%s\n' \
-  'agent g grok-build grok' \
-  'toolbox p python dev-python' \
-  'session t tmux sjmp_tmux' \
-  'agent h here sjmp_tmux_here' \
-  'windows w windows sjmp_windows' \
+  'g grok-build agent grok' \
+  'p python toolbox dev-python' \
+  't tmux session sjmp_tmux' \
+  'h here agent sjmp_tmux_here' \
+  'w windows windows sjmp_windows' \
   | sjmp_align_action_rows
 printf '%s\n' '----'
 printf '%s\n' \
-  'session t tmux sjmp_tmux' \
-  'agent h here sjmp_tmux_here' \
-  'windows w windows sjmp_windows' \
+  't tmux session sjmp_tmux' \
+  'h here agent sjmp_tmux_here' \
+  'w windows windows sjmp_windows' \
   | sjmp_align_action_rows
 "#;
     let out = std::process::Command::new("bash")
@@ -295,15 +296,15 @@ printf '%s\n' \
     assert_eq!(
         text,
         "\
-agent    g  grok-build  grok
-toolbox  p  python      dev-python
-session  t  tmux        sjmp_tmux
-agent    h  here        sjmp_tmux_here
-windows  w  windows     sjmp_windows
+g  grok-build  agent    grok
+p  python      toolbox  dev-python
+t  tmux        session  sjmp_tmux
+h  here        agent    sjmp_tmux_here
+w  windows     windows  sjmp_windows
 ----
-session  t  tmux     sjmp_tmux
-agent    h  here     sjmp_tmux_here
-windows  w  windows  sjmp_windows
+t  tmux     session  sjmp_tmux
+h  here     agent    sjmp_tmux_here
+w  windows  windows  sjmp_windows
 "
     );
 }
