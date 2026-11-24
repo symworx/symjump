@@ -9,7 +9,7 @@ pub mod init;
 pub mod jump;
 pub mod kids;
 pub mod list;
+pub mod panes;
 pub mod pin;
 pub mod toolbox;
 pub mod unpin;
-pub mod panes;

@@ -464,7 +464,11 @@ fn check_and_doctor_report_fzf_and_tmux() {
         .env("PATH", path)
         .output()
         .unwrap();
-    assert!(check.status.success(), "{}", String::from_utf8_lossy(&check.stderr));
+    assert!(
+        check.status.success(),
+        "{}",
+        String::from_utf8_lossy(&check.stderr)
+    );
     let check_s = String::from_utf8_lossy(&check.stdout);
     assert_eq!(
         check_s,
@@ -749,7 +753,10 @@ fn panes_list_presets_and_keep_windows_alias() {
     let out = bin().args(["--config", c, "windows"]).output().unwrap();
     assert!(out.status.success());
     assert_eq!(String::from_utf8_lossy(&out.stdout), "-\t1\t3\tstack\n");
-    let extra = bin().args(["--config", c, "panes", "nope"]).output().unwrap();
+    let extra = bin()
+        .args(["--config", c, "panes", "nope"])
+        .output()
+        .unwrap();
     assert!(!extra.status.success());
     assert!(String::from_utf8_lossy(&extra.stderr).contains("sjmp panes takes no arguments"));
     let _ = fs::remove_dir_all(&tmp);
