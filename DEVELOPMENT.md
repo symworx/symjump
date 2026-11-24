@@ -30,6 +30,8 @@ eval "$(sjmp init bash)"   # runs in a normal shell and in vterm; other Emacs sh
 
 - **Rust 1.86+**, edition **2024** (`rust-version` in `Cargo.toml`)
 - `fzf` for the picker in the bash hook (numbered picks use `transform` / `rebind`; older fzf still jumps on `1`–`9` but digits will not filter)
+- `tmux` for the dashboard, plain sessions, and pane grids
+- `sjmp check` reports those two. `sjmp doctor` also prints install links
 - Optional: `zoxide`, `toolbox`, `grok`
 
 ## Branches

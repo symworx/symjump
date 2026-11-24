@@ -18,7 +18,7 @@ use ctx::Ctx;
 
 fn main() -> ExitCode {
     match run(env::args().skip(1).collect()) {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(e) => {
             eprintln!("sjmp: {e}");
             ExitCode::from(1)
@@ -36,7 +36,7 @@ fn take_config(args: &mut Vec<String>) -> Option<PathBuf> {
     None
 }
 
-fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+fn run(mut args: Vec<String>) -> Result<ExitCode, Box<dyn std::error::Error>> {
     let cfg_flag = take_config(&mut args);
     let home = env::var("HOME")
         .map(PathBuf::from)
@@ -47,9 +47,11 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         None => Config::default_path()?,
     };
     // cargo install cannot write files. First run on the default path does.
-    if !explicit_config {
-        load::ensure_config(&cfg_path)?;
-    }
+    let created = if !explicit_config {
+        load::ensure_config(&cfg_path)?
+    } else {
+        false
+    };
     let ctx = Ctx {
         args: &args,
         cfg_path: &cfg_path,
@@ -57,6 +59,10 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         explicit_config,
     };
     let cmd = args.first().map(String::as_str).unwrap_or("help");
+    // check and doctor print the report themselves. Other first runs print it once.
+    if cmd != "check" && cmd != "doctor" {
+        cmd::check::note_if_created(created)?;
+    }
     match cmd {
         "help" | "-h" | "--help" => help::run(&ctx)?,
         "list" => cmd::list::run(&ctx)?,
@@ -70,8 +76,10 @@ fn run(mut args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         "config" => cmd::config::run(&ctx)?,
         "toolbox" => cmd::toolbox::run(&ctx)?,
         "windows" => cmd::windows::run(&ctx)?,
+        "check" => return cmd::check::run(&ctx, false),
+        "doctor" => return cmd::check::run(&ctx, true),
         other => return Err(format!("unknown command: {other}").into()),
     }
     io::stdout().flush()?;
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `sjmp check` reports whether `fzf` and `tmux` are on `PATH`. `sjmp doctor` also prints install links. The first run prints the check.
+
 ### Changed
 
 - Action rows are `key`, `label`, `kind`, then the command, so the letter lines up on the left.

@@ -3,6 +3,8 @@
 
 use std::fs;
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::Command;
 
 fn bin() -> Command {
@@ -58,7 +60,8 @@ fn help_menus() {
     assert!(top_s.contains("sjmp pin --help"));
     assert!(top_s.contains("sjmp action --help"));
     assert!(top_s.contains("sjmp config --help"));
-    assert!(top_s.contains("sjmp help [pin|action|config]"));
+    assert!(top_s.contains("sjmp help [pin|action|config|check]"));
+    assert!(top_s.contains("sjmp check --help"));
 
     let pin = bin()
         .args(["--config", c, "pin", "--help"])
@@ -397,10 +400,13 @@ fn first_run_creates_default_config() {
     let xdg = tmp.join("xdg");
     let cfg = xdg.join("symjump").join("favorites.toml");
     assert!(!cfg.exists());
+    let tools = tmp.join("bin");
+    exe(&tools, "fzf");
     let out = bin()
         .args(["list"])
         .env("HOME", tmp.to_str().unwrap())
         .env("XDG_CONFIG_HOME", xdg.to_str().unwrap())
+        .env("PATH", tools.to_str().unwrap())
         .output()
         .unwrap();
     assert!(
@@ -412,7 +418,12 @@ fn first_run_creates_default_config() {
     let created = fs::read_to_string(&cfg).unwrap();
     assert!(created.contains("[keys]"));
     assert!(created.contains("[dashboard]"));
-    assert!(String::from_utf8_lossy(&out.stderr).contains("created"));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("created"));
+    assert!(err.contains("fzf   found"));
+    assert!(err.contains("tmux  missing"));
+    assert!(err.contains("https://github.com/tmux/tmux/wiki/Installing"));
+    assert!(!err.contains("https://github.com/junegunn/fzf#installation"));
     let loc = bin()
         .args(["init"])
         .env("HOME", tmp.to_str().unwrap())
@@ -425,6 +436,80 @@ fn first_run_creates_default_config() {
         cfg.to_str().unwrap()
     );
     assert!(!String::from_utf8_lossy(&loc.stderr).contains("created"));
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+fn exe(dir: &Path, name: &str) {
+    fs::create_dir_all(dir).unwrap();
+    let path = dir.join(name);
+    fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+    let mut perms = fs::metadata(&path).unwrap().permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&path, perms).unwrap();
+}
+
+#[test]
+fn check_and_doctor_report_fzf_and_tmux() {
+    let tmp = scratch("check");
+    let cfg = tmp.join("favorites.toml");
+    fs::write(&cfg, "root = \"~/src\"\n").unwrap();
+    let c = cfg.to_str().unwrap();
+    let tools = tmp.join("bin");
+    exe(&tools, "fzf");
+    exe(&tools, "tmux");
+    let path = tools.to_str().unwrap();
+
+    let check = bin()
+        .args(["--config", c, "check"])
+        .env("PATH", path)
+        .output()
+        .unwrap();
+    assert!(check.status.success(), "{}", String::from_utf8_lossy(&check.stderr));
+    let check_s = String::from_utf8_lossy(&check.stdout);
+    assert_eq!(
+        check_s,
+        "\
+fzf   found
+tmux  found
+"
+    );
+
+    let doctor = bin()
+        .args(["--config", c, "doctor"])
+        .env("PATH", path)
+        .output()
+        .unwrap();
+    assert!(
+        doctor.status.success(),
+        "{}",
+        String::from_utf8_lossy(&doctor.stderr)
+    );
+    let doctor_s = String::from_utf8_lossy(&doctor.stdout);
+    assert!(doctor_s.contains("fzf   found"));
+    assert!(doctor_s.contains("https://github.com/junegunn/fzf#installation"));
+    assert!(doctor_s.contains("tmux  found"));
+    assert!(doctor_s.contains("https://github.com/tmux/tmux/wiki/Installing"));
+
+    let help = bin()
+        .args(["--config", c, "check", "--help"])
+        .output()
+        .unwrap();
+    assert!(help.status.success());
+    assert!(String::from_utf8_lossy(&help.stdout).contains("sjmp doctor"));
+
+    fs::remove_file(tools.join("tmux")).unwrap();
+    let missing = bin()
+        .args(["--config", c, "check"])
+        .env("PATH", path)
+        .output()
+        .unwrap();
+    assert_eq!(missing.status.code(), Some(1));
+    let missing_s = String::from_utf8_lossy(&missing.stdout);
+    assert!(missing_s.contains("fzf   found"));
+    assert!(missing_s.contains("tmux  missing"));
+    assert!(missing_s.contains("https://github.com/tmux/tmux/wiki/Installing"));
+    assert!(!missing_s.contains("https://github.com/junegunn/fzf#installation"));
+    assert!(String::from_utf8_lossy(&missing.stderr).is_empty());
     let _ = fs::remove_dir_all(&tmp);
 }
 
