@@ -6,7 +6,7 @@ mod emit;
 mod lex;
 
 use crate::error::ConfigError;
-use crate::model::{AgentAction, Config, Favorite, ToolboxAction, WindowLayout};
+use crate::model::{AgentAction, Config, Favorite, PaneLayout, ToolboxAction};
 use lex::Section;
 
 impl Config {
@@ -46,7 +46,7 @@ fn parse_config(s: &str) -> Result<Config, ConfigError> {
                     cmd: String::new(),
                     keys: None,
                 }),
-                Section::Windows => cfg.windows.push(WindowLayout {
+                Section::Panes => cfg.panes.push(PaneLayout {
                     label: String::new(),
                     cols: 0,
                     rows: 0,
@@ -61,7 +61,7 @@ fn parse_config(s: &str) -> Result<Config, ConfigError> {
         apply::apply_kv(&mut cfg, section, &key, val, line_no)?;
     }
     cfg.dashboard.normalize().map_err(ConfigError::Parse)?;
-    apply::check_windows(&cfg)?;
+    apply::check_panes(&cfg)?;
     cfg.ai.command()?;
     cfg.ai.local_command()?;
     Ok(cfg)
@@ -200,9 +200,9 @@ size = 40
     }
 
     #[test]
-    fn empty_windows_use_builtins() {
+    fn empty_panes_use_builtins() {
         let c = Config::parse_str("").unwrap();
-        let layouts = c.window_layouts();
+        let layouts = c.pane_layouts();
         assert_eq!(layouts.len(), 3);
         assert_eq!(layouts[0].label, "2x2");
         assert_eq!((layouts[0].cols, layouts[0].rows), (2, 2));
@@ -211,31 +211,37 @@ size = 40
     }
 
     #[test]
-    fn windows_replace_builtins_and_roundtrip() {
-        let src = "\
-[[windows]]
+    fn panes_replace_builtins_and_roundtrip() {
+        let panes = "\
+[[panes]]
 label = \"pair\"
 cols = 2
 rows = 2
 keys = \"p\"
 
-[[windows]]
+[[panes]]
 label = \"2x3\"
 cols = 2
 rows = 3
 ";
-        let c = Config::parse_str(src).unwrap();
-        assert_eq!(c.windows.len(), 2);
-        assert_eq!(c.window_layouts()[0].label, "pair");
-        assert_eq!(c.window_layouts()[0].keys.as_deref(), Some("p"));
-        assert_eq!(c, Config::parse_str(&c.to_toml().unwrap()).unwrap());
-        assert!(Config::parse_str("[[windows]]\nlabel = \"x\"\ncols = 1\nrows = 1\n").is_err());
-        assert!(Config::parse_str("[[windows]]\nlabel = \"x\"\ncols = 7\nrows = 2\n").is_err());
+        let windows = panes.replace("[[panes]]", "[[windows]]");
+        let c = Config::parse_str(panes).unwrap();
+        assert_eq!(c, Config::parse_str(&windows).unwrap());
+        assert_eq!(c.panes.len(), 2);
+        assert_eq!(c.pane_layouts()[0].label, "pair");
+        assert_eq!(c.pane_layouts()[0].keys.as_deref(), Some("p"));
+        let emitted = c.to_toml().unwrap();
+        assert!(emitted.contains("[[panes]]"));
+        assert!(!emitted.contains("[[windows]]"));
+        assert_eq!(c, Config::parse_str(&emitted).unwrap());
+        let bad = |src: &str| Config::parse_str(src).unwrap_err().to_string();
+        assert!(bad("[[panes]]\nlabel = \"x\"\ncols = 1\nrows = 1\n").contains("at least 2 panes"));
+        assert!(bad("[[windows]]\nlabel = \"x\"\ncols = 7\nrows = 2\n").contains("1 to 6"));
         assert!(
-            Config::parse_str(
-                "[[windows]]\nlabel = \"a\"\ncols = 2\nrows = 2\nkeys = \"p\"\n\n[[windows]]\nlabel = \"b\"\ncols = 2\nrows = 3\nkeys = \"p\"\n"
+            bad(
+                "[[panes]]\nlabel = \"a\"\ncols = 2\nrows = 2\nkeys = \"p\"\n\n[[windows]]\nlabel = \"b\"\ncols = 2\nrows = 3\nkeys = \"p\"\n"
             )
-            .is_err()
+            .contains("pane layout key `p` is already used")
         );
     }
 }

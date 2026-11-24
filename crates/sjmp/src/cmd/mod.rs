@@ -2,13 +2,14 @@
 // Licensed under the Apache License, Version 2.0.
 
 pub mod action;
+pub mod check;
 pub mod config;
 pub mod exec;
 pub mod init;
 pub mod jump;
 pub mod kids;
 pub mod list;
+pub mod panes;
 pub mod pin;
 pub mod toolbox;
 pub mod unpin;
-pub mod windows;

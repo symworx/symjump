@@ -3,6 +3,8 @@
 
 use std::fs;
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::Command;
 
 fn bin() -> Command {
@@ -58,7 +60,8 @@ fn help_menus() {
     assert!(top_s.contains("sjmp pin --help"));
     assert!(top_s.contains("sjmp action --help"));
     assert!(top_s.contains("sjmp config --help"));
-    assert!(top_s.contains("sjmp help [pin|action|config]"));
+    assert!(top_s.contains("sjmp help [pin|action|config|check]"));
+    assert!(top_s.contains("sjmp check --help"));
 
     let pin = bin()
         .args(["--config", c, "pin", "--help"])
@@ -218,9 +221,9 @@ fn jump_list_exec_toolbox() {
         .unwrap();
     let listed_s = String::from_utf8_lossy(&listed.stdout);
     assert!(!listed_s.contains('\t'), "{listed_s}");
-    assert!(listed_s.contains("agent    c  codex       codex -C {path}"));
-    assert!(listed_s.contains("agent    g  grok-build  grok"));
-    assert!(listed_s.contains("toolbox  p  python      dev-python"));
+    assert!(listed_s.contains("c  codex       agent    codex -C {path}"));
+    assert!(listed_s.contains("g  grok-build  agent    grok"));
+    assert!(listed_s.contains("p  python      toolbox  dev-python"));
     let taken = bin()
         .args([
             "--config", c, "action", "add", "agent", "--cmd", "echo", "--keys", "c",
@@ -397,10 +400,13 @@ fn first_run_creates_default_config() {
     let xdg = tmp.join("xdg");
     let cfg = xdg.join("symjump").join("favorites.toml");
     assert!(!cfg.exists());
+    let tools = tmp.join("bin");
+    exe(&tools, "fzf");
     let out = bin()
         .args(["list"])
         .env("HOME", tmp.to_str().unwrap())
         .env("XDG_CONFIG_HOME", xdg.to_str().unwrap())
+        .env("PATH", tools.to_str().unwrap())
         .output()
         .unwrap();
     assert!(
@@ -412,7 +418,12 @@ fn first_run_creates_default_config() {
     let created = fs::read_to_string(&cfg).unwrap();
     assert!(created.contains("[keys]"));
     assert!(created.contains("[dashboard]"));
-    assert!(String::from_utf8_lossy(&out.stderr).contains("created"));
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("created"));
+    assert!(err.contains("fzf   found"));
+    assert!(err.contains("tmux  missing"));
+    assert!(err.contains("https://github.com/tmux/tmux/wiki/Installing"));
+    assert!(!err.contains("https://github.com/junegunn/fzf#installation"));
     let loc = bin()
         .args(["init"])
         .env("HOME", tmp.to_str().unwrap())
@@ -425,6 +436,84 @@ fn first_run_creates_default_config() {
         cfg.to_str().unwrap()
     );
     assert!(!String::from_utf8_lossy(&loc.stderr).contains("created"));
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+fn exe(dir: &Path, name: &str) {
+    fs::create_dir_all(dir).unwrap();
+    let path = dir.join(name);
+    fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+    let mut perms = fs::metadata(&path).unwrap().permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&path, perms).unwrap();
+}
+
+#[test]
+fn check_and_doctor_report_fzf_and_tmux() {
+    let tmp = scratch("check");
+    let cfg = tmp.join("favorites.toml");
+    fs::write(&cfg, "root = \"~/src\"\n").unwrap();
+    let c = cfg.to_str().unwrap();
+    let tools = tmp.join("bin");
+    exe(&tools, "fzf");
+    exe(&tools, "tmux");
+    let path = tools.to_str().unwrap();
+
+    let check = bin()
+        .args(["--config", c, "check"])
+        .env("PATH", path)
+        .output()
+        .unwrap();
+    assert!(
+        check.status.success(),
+        "{}",
+        String::from_utf8_lossy(&check.stderr)
+    );
+    let check_s = String::from_utf8_lossy(&check.stdout);
+    assert_eq!(
+        check_s,
+        "\
+fzf   found
+tmux  found
+"
+    );
+
+    let doctor = bin()
+        .args(["--config", c, "doctor"])
+        .env("PATH", path)
+        .output()
+        .unwrap();
+    assert!(
+        doctor.status.success(),
+        "{}",
+        String::from_utf8_lossy(&doctor.stderr)
+    );
+    let doctor_s = String::from_utf8_lossy(&doctor.stdout);
+    assert!(doctor_s.contains("fzf   found"));
+    assert!(doctor_s.contains("https://github.com/junegunn/fzf#installation"));
+    assert!(doctor_s.contains("tmux  found"));
+    assert!(doctor_s.contains("https://github.com/tmux/tmux/wiki/Installing"));
+
+    let help = bin()
+        .args(["--config", c, "check", "--help"])
+        .output()
+        .unwrap();
+    assert!(help.status.success());
+    assert!(String::from_utf8_lossy(&help.stdout).contains("sjmp doctor"));
+
+    fs::remove_file(tools.join("tmux")).unwrap();
+    let missing = bin()
+        .args(["--config", c, "check"])
+        .env("PATH", path)
+        .output()
+        .unwrap();
+    assert_eq!(missing.status.code(), Some(1));
+    let missing_s = String::from_utf8_lossy(&missing.stdout);
+    assert!(missing_s.contains("fzf   found"));
+    assert!(missing_s.contains("tmux  missing"));
+    assert!(missing_s.contains("https://github.com/tmux/tmux/wiki/Installing"));
+    assert!(!missing_s.contains("https://github.com/junegunn/fzf#installation"));
+    assert!(String::from_utf8_lossy(&missing.stderr).is_empty());
     let _ = fs::remove_dir_all(&tmp);
 }
 
@@ -631,6 +720,45 @@ fn pin_then_jump() {
         .output()
         .unwrap();
     assert!(!missing.status.success());
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+#[test]
+fn panes_list_presets_and_keep_windows_alias() {
+    let tmp = scratch("panes");
+    let cfg = tmp.join("favorites.toml");
+    let c = cfg.to_str().unwrap();
+    let builtins = "-\t2\t2\t2x2\n-\t2\t3\t2x3\n-\t3\t2\t3x2\n";
+    for cmd in ["panes", "windows"] {
+        let out = bin().args(["--config", c, cmd]).output().unwrap();
+        assert!(
+            out.status.success(),
+            "{cmd}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(String::from_utf8_lossy(&out.stdout), builtins);
+    }
+    fs::write(
+        &cfg,
+        "[[windows]]\nlabel = \"pair\"\ncols = 2\nrows = 2\nkeys = \"q\"\n",
+    )
+    .unwrap();
+    let custom = "q\t2\t2\tpair\n";
+    for cmd in ["panes", "windows"] {
+        let out = bin().args(["--config", c, cmd]).output().unwrap();
+        assert!(out.status.success(), "{cmd}");
+        assert_eq!(String::from_utf8_lossy(&out.stdout), custom);
+    }
+    fs::write(&cfg, "[[panes]]\nlabel = \"stack\"\ncols = 1\nrows = 3\n").unwrap();
+    let out = bin().args(["--config", c, "windows"]).output().unwrap();
+    assert!(out.status.success());
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "-\t1\t3\tstack\n");
+    let extra = bin()
+        .args(["--config", c, "panes", "nope"])
+        .output()
+        .unwrap();
+    assert!(!extra.status.success());
+    assert!(String::from_utf8_lossy(&extra.stderr).contains("sjmp panes takes no arguments"));
     let _ = fs::remove_dir_all(&tmp);
 }
 

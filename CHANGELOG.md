@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `sjmp check` reports whether `fzf` and `tmux` are on `PATH`. `sjmp doctor` also prints install links. The first run prints the check.
+
 ### Changed
+
+- Action rows are `key`, `label`, `kind`, then the command, so the letter lines up on the left.
+- The built-in current-directory agent row is `a` / `agent`. It always opens a new tmux window. A configured key `a` replaces it.
+- Preset grids are panes. The action row is `w` / `panes`, and `sjmp panes` lists them. `[[panes]]` replaces the built-in 2x2, 2x3, and 3x2. `[[windows]]` and `sjmp windows` still load.
 
 ## [0.4.0] - 2026-11-19
 

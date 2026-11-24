@@ -23,8 +23,9 @@ From a git checkout: `cargo install --path crates/sjmp`.
 
 `cargo install` only puts `sjmp` on `PATH`. The binary creates the config file
 on first run (default path only; `--config` is left alone) and will not
-overwrite an existing file. If `sjmp` is missing from `PATH`, the hook does
-nothing.
+overwrite an existing file. That first run also reports whether `fzf` and `tmux`
+are on `PATH`. `sjmp check` prints the report again. `sjmp doctor` adds the
+install links. If `sjmp` is missing from `PATH`, the hook does nothing.
 
 Depends on `symjump-config` and `symjump-core` (published in that order, then
 this crate).

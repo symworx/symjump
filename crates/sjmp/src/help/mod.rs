@@ -2,12 +2,14 @@
 // Licensed under the Apache License, Version 2.0.
 
 mod action;
+mod check;
 mod config;
 mod pin;
 
 use crate::ctx::Ctx;
 
 pub use action::print as print_action;
+pub use check::print as print_check;
 pub use config::print as print_config;
 pub use pin::print as print_pin;
 
@@ -36,8 +38,11 @@ pub fn run(ctx: &Ctx) -> Result<(), Box<dyn std::error::Error>> {
         Some("pin") => print_pin(),
         Some("action") | Some("actions") => print_action(),
         Some("config") => print_config(),
+        Some("check") | Some("doctor") => print_check(),
         Some(other) => {
-            return Err(format!("unknown help topic: {other} (try pin, action, or config)").into());
+            return Err(
+                format!("unknown help topic: {other} (try pin, action, config, or check)").into(),
+            );
         }
     }
     Ok(())
@@ -50,7 +55,7 @@ sjmp — portable favorites + action launcher
 
 Usage:
   sjmp <command> [args]
-  sjmp help [pin|action|config]
+  sjmp help [pin|action|config|check]
 
 Commands:
   list                      list favorites
@@ -62,7 +67,9 @@ Commands:
   action                    list, add, run, or remove actions
   exec <fav|path> --cmd C   print an exec line
   config                    set the dashboard split
-  windows                   list preset pane grids
+  panes                     list preset pane grids
+  check                     see if fzf and tmux are installed
+  doctor                    check, and print install links
   toolbox list              list toolbox actions
   toolbox enter <q>         print enter command (toolbox or distrobox)
 
@@ -74,6 +81,7 @@ See also:
   sjmp pin --help
   sjmp action --help
   sjmp config --help
+  sjmp check --help
 "
     );
 }

@@ -7,7 +7,7 @@ mod dashboard;
 mod favorite;
 mod frequent;
 mod keys;
-mod windows;
+mod panes;
 
 pub use actions::{Actions, AgentAction, ToolboxAction};
 pub use ai::Ai;
@@ -17,15 +17,15 @@ pub use dashboard::{
 pub use favorite::Favorite;
 pub use frequent::Frequent;
 pub use keys::Keys;
-pub use windows::WindowLayout;
+pub use panes::PaneLayout;
 
 impl Config {
     /// Configured grids. An empty list uses the built-in 2x2, 2x3, and 3x2.
-    pub fn window_layouts(&self) -> Vec<WindowLayout> {
-        if self.windows.is_empty() {
-            WindowLayout::defaults()
+    pub fn pane_layouts(&self) -> Vec<PaneLayout> {
+        if self.panes.is_empty() {
+            PaneLayout::defaults()
         } else {
-            self.windows.clone()
+            self.panes.clone()
         }
     }
 }
@@ -39,5 +39,5 @@ pub struct Config {
     pub dashboard: Dashboard,
     pub favorites: Vec<Favorite>,
     pub actions: Actions,
-    pub windows: Vec<WindowLayout>,
+    pub panes: Vec<PaneLayout>,
 }

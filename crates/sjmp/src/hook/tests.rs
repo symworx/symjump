@@ -28,15 +28,22 @@ fn hook_skips_emacs_and_binds_meta() {
     assert!(h.contains("sjmp_fzf_nav 'kids> '"));
     assert!(h.contains("sjmp_fzf_action"));
     assert!(h.contains("prompt='action> '"));
-    assert!(h.contains("session t tmux sjmp_tmux"));
-    assert!(h.contains("agent h here sjmp_tmux_here"));
+    assert!(h.contains("t tmux session sjmp_tmux"));
+    assert!(h.contains("a agent agent sjmp_tmux_here"));
     assert!(h.contains("sjmp_tmux_here()"));
     assert!(h.contains("sjmp_align_action_rows"));
-    assert!(h.contains("h: agent here"));
-    assert!(h.contains("windows w windows sjmp_windows"));
+    assert!(h.contains("a: agent"));
+    assert!(h.contains("w panes panes sjmp_panes"));
+    assert!(h.contains("sjmp_panes()"));
     assert!(h.contains("sjmp_tmux_grid"));
-    assert!(h.contains("w: windows"));
-    assert!(h.contains("--nth=2,3"));
+    assert!(h.contains("w: panes"));
+    assert!(h.contains("prompt='panes> '"));
+    assert!(h.contains("no pane layouts"));
+    assert!(h.contains("open panes again."));
+    assert!(!h.contains("sjmp_windows"));
+    assert!(!h.contains("w: windows"));
+    assert!(h.contains("--nth=1,2"));
+    assert!(!h.contains("--nth=2,3"));
     assert!(h.contains("session)"));
     assert!(h.contains("command -v distrobox"));
     assert!(h.contains("neither toolbox nor distrobox found"));
@@ -257,17 +264,17 @@ fn hook_action_menu_columns_align() {
 unset INSIDE_EMACS
 source "$1"
 printf '%s\n' \
-  'agent g grok-build grok' \
-  'toolbox p python dev-python' \
-  'session t tmux sjmp_tmux' \
-  'agent h here sjmp_tmux_here' \
-  'windows w windows sjmp_windows' \
+  'g grok-build agent grok' \
+  'p python toolbox dev-python' \
+  't tmux session sjmp_tmux' \
+  'a agent agent sjmp_tmux_here' \
+  'w panes panes sjmp_panes' \
   | sjmp_align_action_rows
 printf '%s\n' '----'
 printf '%s\n' \
-  'session t tmux sjmp_tmux' \
-  'agent h here sjmp_tmux_here' \
-  'windows w windows sjmp_windows' \
+  't tmux session sjmp_tmux' \
+  'a agent agent sjmp_tmux_here' \
+  'w panes panes sjmp_panes' \
   | sjmp_align_action_rows
 "#;
     let out = std::process::Command::new("bash")
@@ -295,21 +302,21 @@ printf '%s\n' \
     assert_eq!(
         text,
         "\
-agent    g  grok-build  grok
-toolbox  p  python      dev-python
-session  t  tmux        sjmp_tmux
-agent    h  here        sjmp_tmux_here
-windows  w  windows     sjmp_windows
+g  grok-build  agent    grok
+p  python      toolbox  dev-python
+t  tmux        session  sjmp_tmux
+a  agent       agent    sjmp_tmux_here
+w  panes       panes    sjmp_panes
 ----
-session  t  tmux     sjmp_tmux
-agent    h  here     sjmp_tmux_here
-windows  w  windows  sjmp_windows
+t  tmux   session  sjmp_tmux
+a  agent  agent    sjmp_tmux_here
+w  panes  panes    sjmp_panes
 "
     );
 }
 
 #[test]
-fn hook_window_grid_splits_columns_then_rows() {
+fn hook_pane_grid_splits_columns_then_rows() {
     let h = bash_hook(&Config::default());
     let dir = std::env::temp_dir().join(format!("sjmp-grid-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
@@ -325,7 +332,7 @@ fn hook_window_grid_splits_columns_then_rows() {
     let _ = std::fs::remove_dir_all(&dir);
     assert!(
         out.status.success(),
-        "window grid driver failed\nstdout:\n{}\nstderr:\n{}",
+        "pane grid driver failed\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
