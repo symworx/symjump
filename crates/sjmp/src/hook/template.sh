@@ -43,11 +43,11 @@ sjmp_fzf_nav() {
 # Action palette. A letter, while the query is empty, runs the row whose key
 # is that letter. Search uses the key and the label, not the kind word.
 # t is a plain tmux session unless favorites.toml already uses t.
-# h launches the agent dashboard for $PWD unless favorites.toml already uses h.
-# w opens the window-layout picker unless favorites.toml already uses w.
+# a launches the agent dashboard for $PWD unless favorites.toml already uses a.
+# w opens the pane picker unless favorites.toml already uses w.
 sjmp_fzf_action() {
   local rows="$1" modefile="$2"
-  local dir row key key_q modeq names binds header t_payload h_payload w_payload status
+  local dir row key key_q modeq names binds header t_payload a_payload w_payload status
   dir="$(mktemp -d)"
   modeq=$(printf '%q' "$modefile")
   names="1,2,3,4,5,6,7,8,9"
@@ -68,17 +68,17 @@ sjmp_fzf_action() {
     names="${names},${key}"
   done < "$dir/rows"
   t_payload="$(awk '$1 == "t" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
-  h_payload="$(awk '$1 == "h" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
+  a_payload="$(awk '$1 == "a" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
   w_payload="$(awk '$1 == "w" { for (i = 4; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : ""); exit }' "$dir/rows")"
   header='letter: that key'
   if [ "$t_payload" = sjmp_tmux ]; then
     header="${header}    t: tmux session"
   fi
-  if [ "$h_payload" = sjmp_tmux_here ]; then
-    header="${header}    h: agent here"
+  if [ "$a_payload" = sjmp_tmux_here ]; then
+    header="${header}    a: agent"
   fi
-  if [ "$w_payload" = sjmp_windows ]; then
-    header="${header}    w: windows"
+  if [ "$w_payload" = sjmp_panes ]; then
+    header="${header}    w: panes"
   fi
   header="${header}    esc: close"
   printf '%s\n' "$rows" | fzf --height=20% --reverse --prompt='action> ' --header "$header" \
@@ -530,13 +530,13 @@ sjmp_tmux_grid() {
   fi
   path="$(cd -- "$PWD" && pwd)" || return 1
   if ! command -v tmux >/dev/null 2>&1; then
-    echo "sjmp: tmux is not installed. Install tmux, then open windows again." >&2
+    echo "sjmp: tmux is not installed. Install tmux, then open panes again." >&2
     return 1
   fi
   label="$(printf '%s' "$label" | tr -c 'A-Za-z0-9._+-' '-')"
   label="${label#-}"
   label="${label%-}"
-  [ -n "$label" ] || label=windows
+  [ -n "$label" ] || label=panes
   slug="$(sjmp_tmux_slug "$path")"
   session="sjmp-${slug}"
   if [ -n "${TMUX:-}" ]; then
@@ -575,11 +575,11 @@ sjmp_tmux_grid() {
   fi
 }
 # Pick a preset grid and open it for $PWD. Esc returns 130.
-sjmp_windows() {
+sjmp_panes() {
   local rows sel dir line key cols rows_n label key_q names binds status header
   local -a extra=()
-  rows="$("$sjmp_bin" windows)" || return
-  [ -n "$rows" ] || { echo "sjmp: no window layouts" >&2; return 1; }
+  rows="$("$sjmp_bin" panes)" || return
+  [ -n "$rows" ] || { echo "sjmp: no pane layouts" >&2; return 1; }
   dir="$(mktemp -d)"
   : > "$dir/pick"
   names=""
@@ -608,7 +608,7 @@ sjmp_windows() {
     extra=(--bind "$binds" --bind "change:transform:[[ -z \"{q}\" ]] && echo \"rebind(${names})\" || echo \"unbind(${names})\"")
   fi
   status=0
-  sel="$(printf '%s\n' "$rows" | fzf --height=40% --reverse --prompt='windows> ' \
+  sel="$(printf '%s\n' "$rows" | fzf --height=40% --reverse --prompt='panes> ' \
     --header "$header" --delimiter=$'\t' --nth=1,4 --with-nth=4,2,3 \
     "${extra[@]}")" || status=$?
   if [ -s "$dir/pick" ]; then
@@ -721,11 +721,11 @@ sjmp_actions() {
   if ! printf '%s\n' "$rows" | awk '$1 == "t" { found = 1 } END { exit !found }'; then
     rows="${rows:+$rows$'\n'}t tmux session sjmp_tmux"
   fi
-  if ! printf '%s\n' "$rows" | awk '$1 == "h" { found = 1 } END { exit !found }'; then
-    rows="${rows:+$rows$'\n'}h here agent sjmp_tmux_here"
+  if ! printf '%s\n' "$rows" | awk '$1 == "a" { found = 1 } END { exit !found }'; then
+    rows="${rows:+$rows$'\n'}a agent agent sjmp_tmux_here"
   fi
   if ! printf '%s\n' "$rows" | awk '$1 == "w" { found = 1 } END { exit !found }'; then
-    rows="${rows:+$rows$'\n'}w windows windows sjmp_windows"
+    rows="${rows:+$rows$'\n'}w panes panes sjmp_panes"
   fi
   rows="$(printf '%s\n' "$rows" | sjmp_align_action_rows)"
   # Esc closes this first picker. Esc on the favorite picker comes back here.
@@ -760,9 +760,9 @@ sjmp_actions() {
         sjmp_tmux
         return
         ;;
-      windows)
+      panes)
         status=0
-        sjmp_windows || status=$?
+        sjmp_panes || status=$?
         # 130 is Esc or Ctrl-C from fzf. Other failures stop.
         [ "$status" -eq 130 ] && continue
         [ "$status" -ne 0 ] && return "$status"

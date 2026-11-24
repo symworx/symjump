@@ -64,8 +64,8 @@ pub(super) fn emit_config(cfg: &Config) -> String {
         }
         out.push('\n');
     }
-    for w in &cfg.windows {
-        out.push_str("[[windows]]\n");
+    for w in &cfg.panes {
+        out.push_str("[[panes]]\n");
         out.push_str(&format!("label = {}\n", emit_string(&w.label)));
         out.push_str(&format!("cols = {}\n", w.cols));
         out.push_str(&format!("rows = {}\n", w.rows));

@@ -12,4 +12,4 @@ pub mod list;
 pub mod pin;
 pub mod toolbox;
 pub mod unpin;
-pub mod windows;
+pub mod panes;

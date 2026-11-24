@@ -14,7 +14,7 @@ pub(super) enum Section {
     Favorite,
     Toolbox,
     Agent,
-    Windows,
+    Panes,
 }
 
 pub(super) enum Value {
@@ -42,7 +42,7 @@ pub(super) fn parse_header(line: &str, line_no: usize) -> Result<Section, Config
             "dashboard.pane" => Ok(Section::DashPane),
             "actions.toolbox" => Ok(Section::Toolbox),
             "actions.agent" => Ok(Section::Agent),
-            "windows" => Ok(Section::Windows),
+            "panes" | "windows" => Ok(Section::Panes),
             _ => Err(err()),
         };
     }

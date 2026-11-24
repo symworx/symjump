@@ -4,14 +4,14 @@
 /// One preset grid. `cols` is left | right. `rows` is top / bottom.
 /// `2x3` is 2 columns and 3 rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WindowLayout {
+pub struct PaneLayout {
     pub label: String,
     pub cols: u32,
     pub rows: u32,
     pub keys: Option<String>,
 }
 
-impl WindowLayout {
+impl PaneLayout {
     pub fn defaults() -> Vec<Self> {
         vec![
             Self {
@@ -37,17 +37,17 @@ impl WindowLayout {
 
     pub fn check(&self) -> Result<(), String> {
         if self.label.trim().is_empty() || self.label.contains(['\t', '\n']) {
-            return Err("window layout needs a label".into());
+            return Err("pane layout needs a label".into());
         }
         if !(1..=6).contains(&self.cols) || !(1..=6).contains(&self.rows) {
             return Err(format!(
-                "window layout `{}`: cols and rows are 1 to 6",
+                "pane layout `{}`: cols and rows are 1 to 6",
                 self.label
             ));
         }
         if self.cols * self.rows < 2 {
             return Err(format!(
-                "window layout `{}` needs at least 2 panes",
+                "pane layout `{}` needs at least 2 panes",
                 self.label
             ));
         }
@@ -57,7 +57,7 @@ impl WindowLayout {
                 (Some(c), None) if c.is_ascii_alphabetic() => {}
                 _ => {
                     return Err(format!(
-                        "window layout `{}`: key must be one letter",
+                        "pane layout `{}`: key must be one letter",
                         self.label
                     ));
                 }

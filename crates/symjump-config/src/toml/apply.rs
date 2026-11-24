@@ -101,8 +101,8 @@ pub(super) fn apply_kv(
                 _ => return Err(bad()),
             }
         }
-        Section::Windows => {
-            let w = cfg.windows.last_mut().ok_or_else(bad)?;
+        Section::Panes => {
+            let w = cfg.panes.last_mut().ok_or_else(bad)?;
             match (key, val) {
                 ("label", Value::Str(s)) => w.label = s,
                 ("cols", Value::Int(n)) => w.cols = n,
@@ -115,14 +115,14 @@ pub(super) fn apply_kv(
     Ok(())
 }
 
-pub(super) fn check_windows(cfg: &Config) -> Result<(), ConfigError> {
+pub(super) fn check_panes(cfg: &Config) -> Result<(), ConfigError> {
     let mut seen = std::collections::BTreeSet::new();
-    for w in &cfg.windows {
+    for w in &cfg.panes {
         w.check().map_err(ConfigError::Parse)?;
         if let Some(k) = &w.keys {
             if !seen.insert(k.clone()) {
                 return Err(ConfigError::Parse(format!(
-                    "window layout key `{k}` is already used"
+                    "pane layout key `{k}` is already used"
                 )));
             }
         }

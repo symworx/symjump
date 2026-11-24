@@ -31,8 +31,8 @@ Do **not** start a VTE/GPU terminal emulator. The bash hook runs when `$INSIDE_E
 | `M-Enter` | actions in a bare terminal, tmux, and vterm. `\e\C-m` and `\e\C-j`. A tmux root binding can consume it before readline |
 | letter | in that palette, query empty: run the action whose key is that letter. The filter matches the key and the label, not the kind word |
 | `t` | that default, when key `t` is free: plain shell for `$PWD` (`sjmp_tmux`). Inside tmux, a background window in the current session. The current panes stay on screen. Outside, session `sjmp-<directory>`. The row kind is `session`. A configured key `t` replaces it |
-| `h` | that default, when key `h` is free: agent dashboard for `$PWD` (`sjmp_tmux_here`). Always a new window. A configured key `h` replaces it |
-| `w` | that default, when key `w` is free: preset pane grids for `$PWD` (`sjmp_windows`). Built-ins are 2x2, 2x3, 3x2. `[[windows]]` replaces them. A configured key `w` replaces the row |
+| `a` | that default, when key `a` is free: agent dashboard for `$PWD` (`sjmp_tmux_here`). The row label is `agent`. Always a new window. A configured key `a` replaces it |
+| `w` | that default, when key `w` is free: preset pane grids for `$PWD` (`sjmp_panes`). Built-ins are 2x2, 2x3, 3x2. `[[panes]]` replaces them. `[[windows]]` still loads. A configured key `w` replaces the row |
 | `Esc` | on a later picker: back to the previous one. On the first picker: close |
 | `M-<key>` | jump favorite with that `keys` letter |
 | Enter | places and kids pickers: `cd` |

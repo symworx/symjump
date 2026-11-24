@@ -31,21 +31,23 @@ keys = "s"
 
 # Key t replaces the built-in session row (plain tmux for the current directory).
 # Use "sjmp_tmux '{path}'" to pick a favorite first.
-# Key h replaces the built-in agent-here row (sjmp_tmux_here for $PWD).
-# Key w replaces the built-in windows row. Any [[windows]] entry replaces
+# Key a replaces the built-in agent row (sjmp_tmux_here for $PWD).
+# Use "sjmp_tmux_dash '{path}'" to pick a favorite first.
+# Key w replaces the built-in panes row. Any [[panes]] entry replaces
 # the built-in 2x2, 2x3, and 3x2 grids. cols is left | right. rows is top / bottom.
+# [[windows]] still loads.
 
-[[windows]]
+[[panes]]
 label = "2x2"
 cols = 2
 rows = 2
 
-[[windows]]
+[[panes]]
 label = "2x3"
 cols = 2
 rows = 3
 
-[[windows]]
+[[panes]]
 label = "3x2"
 cols = 3
 rows = 2
@@ -62,7 +64,7 @@ keys = "p"
 [[actions.agent]]
 label = "agent"
 keys = "a"
-cmd = "sjmp_tmux_dash '{path}'"
+cmd = "sjmp_tmux_here"
 
 [[actions.agent]]
 label = "ollama"

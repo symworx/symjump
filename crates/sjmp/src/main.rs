@@ -75,7 +75,7 @@ fn run(mut args: Vec<String>) -> Result<ExitCode, Box<dyn std::error::Error>> {
         "exec" => cmd::exec::run(&ctx)?,
         "config" => cmd::config::run(&ctx)?,
         "toolbox" => cmd::toolbox::run(&ctx)?,
-        "windows" => cmd::windows::run(&ctx)?,
+        "panes" | "windows" => cmd::panes::run(&ctx)?,
         "check" => return cmd::check::run(&ctx, false),
         "doctor" => return cmd::check::run(&ctx, true),
         other => return Err(format!("unknown command: {other}").into()),

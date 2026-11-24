@@ -5,7 +5,7 @@
 //!
 //! Parser is a closed subset of TOML (no serde): root keys, `[keys]`,
 //! `[frequent]`, `[ai]`, `[dashboard]`, `[[favorites]]`, `[[actions.toolbox]]`,
-//! `[[actions.agent]]`, `[[windows]]`.
+//! `[[actions.agent]]`, `[[panes]]` (`[[windows]]` still loads).
 
 mod error;
 mod io;
@@ -16,6 +16,6 @@ pub use error::ConfigError;
 pub use io::expand_user;
 pub use model::{
     Actions, AgentAction, Ai, Config, DashPane, Dashboard, Favorite, Frequent, Keys,
-    SplitDirection, ToolboxAction, WindowLayout, pane_name, parse_full_percents, parse_percents,
+    PaneLayout, SplitDirection, ToolboxAction, pane_name, parse_full_percents, parse_percents,
     ratio_text,
 };

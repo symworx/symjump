@@ -720,6 +720,42 @@ fn pin_then_jump() {
 }
 
 #[test]
+fn panes_list_presets_and_keep_windows_alias() {
+    let tmp = scratch("panes");
+    let cfg = tmp.join("favorites.toml");
+    let c = cfg.to_str().unwrap();
+    let builtins = "-\t2\t2\t2x2\n-\t2\t3\t2x3\n-\t3\t2\t3x2\n";
+    for cmd in ["panes", "windows"] {
+        let out = bin().args(["--config", c, cmd]).output().unwrap();
+        assert!(
+            out.status.success(),
+            "{cmd}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(String::from_utf8_lossy(&out.stdout), builtins);
+    }
+    fs::write(
+        &cfg,
+        "[[windows]]\nlabel = \"pair\"\ncols = 2\nrows = 2\nkeys = \"q\"\n",
+    )
+    .unwrap();
+    let custom = "q\t2\t2\tpair\n";
+    for cmd in ["panes", "windows"] {
+        let out = bin().args(["--config", c, cmd]).output().unwrap();
+        assert!(out.status.success(), "{cmd}");
+        assert_eq!(String::from_utf8_lossy(&out.stdout), custom);
+    }
+    fs::write(&cfg, "[[panes]]\nlabel = \"stack\"\ncols = 1\nrows = 3\n").unwrap();
+    let out = bin().args(["--config", c, "windows"]).output().unwrap();
+    assert!(out.status.success());
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "-\t1\t3\tstack\n");
+    let extra = bin().args(["--config", c, "panes", "nope"]).output().unwrap();
+    assert!(!extra.status.success());
+    assert!(String::from_utf8_lossy(&extra.stderr).contains("sjmp panes takes no arguments"));
+    let _ = fs::remove_dir_all(&tmp);
+}
+
+#[test]
 fn pin_rejects_reserved_key() {
     let tmp = scratch("pin-reserved");
     let cfg = tmp.join("favorites.toml");
